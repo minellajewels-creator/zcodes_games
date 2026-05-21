@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAPZCodes — ABAP Learning Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --sap-blue: #0057A8;
+      --sap-gold: #F0AB00;
+      --neon-cyan: #00F5FF;
+      --neon-green: #39FF14;
+      --dark-bg: #020B18;
+      --panel-bg: rgba(0, 20, 40, 0.85);
+      --border-glow: rgba(0, 245, 255, 0.4);
+      --text-main: #E0F4FF;
+      --text-dim: #7AA8C4;
+      --error: #FF4757;
+      --success: #39FF14;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--dark-bg);
+      color: var(--text-main);
+      font-family: 'Exo 2', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── STARFIELD ── */
+    #starfield {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── GRID OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,87,168,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,87,168,0.06) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0,245,255,0.15);
+      background: rgba(2,11,24,0.9);
+      backdrop-filter: blur(10px);
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--sap-blue), var(--neon-cyan));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0,245,255,0.4);
+    }
+
+    .logo-text {
+      font-family: 'Orbitron', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .logo-text span { color: var(--neon-cyan); }
+
+    .logo-sub {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 4px var(--neon-green); }
+      50% { box-shadow: 0 0 12px var(--neon-green); }
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      padding: 80px 20px 40px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(0,245,255,0.1);
+      border: 1px solid rgba(0,245,255,0.3);
+      color: var(--neon-cyan);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      padding: 6px 18px;
+      border-radius: 20px;
+      margin-bottom: 28px;
+      animation: fadeInDown 0.8s ease;
+    }
+
+    .hero h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(2rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      animation: fadeInUp 0.8s ease 0.2s both;
+    }
+    .hero h1 .accent { color: var(--neon-cyan); text-shadow: 0 0 30px rgba(0,245,255,0.6); }
+
+    .hero-desc {
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto 50px;
+      line-height: 1.7;
+      animation: fadeInUp 0.8s ease 0.3s both;
+    }
+
+    /* ── FEATURES ROW ── */
+    .features {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+      animation: fadeInUp 0.8s ease 0.4s both;
+    }
+    .feat-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,87,168,0.15);
+      border: 1px solid rgba(0,87,168,0.4);
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .feat-chip .icon { font-size: 18px; }
+
+    /* ── MAIN CARD ── */
+    .card-wrap {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: center;
+      padding: 0 20px 80px;
+      animation: fadeInUp 0.8s ease 0.5s both;
+    }
+
+    .main-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-glow);
+      border-radius: 20px;
+      padding: 44px 48px;
+      width: 100%;
+      max-width: 520px;
+      backdrop-filter: blur(20px);
+      box-shadow:
+        0 0 60px rgba(0,245,255,0.08),
+        0 20px 60px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .main-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 30px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'Exo 2', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--sap-blue), #0074CC);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(0,87,168,0.4);
+    }
+
+    /* FORM */
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .field-label {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .field-input {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .field-input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 0 3px rgba(0,245,255,0.1);
+    }
+    .field-input::placeholder { color: #3a6080; }
+
+    select.field-input option { background: #041220; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--sap-blue) 0%, #0096FF 100%);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,87,168,0.5);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-primary .btn-loader {
+      display: none;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    .btn-primary.loading span { display: none; }
+    .btn-primary.loading .btn-loader { display: block; }
+
+    /* DIVIDER */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(0,245,255,0.15);
+    }
+
+    /* MESSAGE BOX */
+    .msg-box {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .msg-box.error {
+      display: block;
+      background: rgba(255,71,87,0.1);
+      border: 1px solid rgba(255,71,87,0.4);
+      color: #FF6B6B;
+    }
+    .msg-box.success {
+      display: block;
+      background: rgba(57,255,20,0.08);
+      border: 1px solid rgba(57,255,20,0.3);
+      color: var(--neon-green);
+    }
+    .msg-box.info {
+      display: block;
+      background: rgba(0,245,255,0.08);
+      border: 1px solid rgba(0,245,255,0.25);
+      color: var(--neon-cyan);
+    }
+
+    /* TOKEN INPUT */
+    .token-input-wrap {
+      position: relative;
+    }
+    .token-eye {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 16px;
+      user-select: none;
+      transition: color 0.2s;
+    }
+    .token-eye:hover { color: var(--neon-cyan); }
+
+    /* FOOTER */
+    footer {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+      font-size: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      border-top: 1px solid rgba(0,245,255,0.08);
+    }
+    footer a { color: var(--neon-cyan); text-decoration: none; }
+
+    /* ANIMATIONS */
+    @keyframes fadeInDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:none; } }
+    @keyframes fadeInUp   { from { opacity:0; transform:translateY(20px);  } to { opacity:1; transform:none; } }
+    @keyframes spin       { to { transform: rotate(360deg); } }
+
+    /* NOTIFICATION TOAST */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(0,20,40,0.95);
+      border: 1px solid var(--neon-cyan);
+      border-radius: 12px;
+      padding: 16px 22px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--neon-cyan);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 9999;
+      max-width: 340px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      header { padding: 14px 20px; }
+      .logo-text { font-size: 16px; }
+      .hero { padding: 50px 16px 30px; }
+      .main-card { padding: 30px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">SZ</div>
+    <div>
+      <div class="logo-text">SAPZ<span>CODES</span></div>
+      <div class="logo-sub">ABAP Learning Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    SYSTEM ONLINE &nbsp;|&nbsp; v2.1.0
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge">⚡ RESTRICTED ACCESS — STUDENTS ONLY</div>
+  <h1>Master <span class="accent">ABAP</span> &<br/>SAP RAP Development</h1>
+  <p class="hero-desc">
+    Real code execution. Gamified learning. Built for the next generation of SAP developers. Request access and start your journey.
+  </p>
+  <div class="features">
+    <div class="feat-chip"><span class="icon">🖥️</span> Live ABAP Executor</div>
+    <div class="feat-chip"><span class="icon">🎮</span> Learning Games</div>
+    <div class="feat-chip"><span class="icon">📊</span> Mock SAP Tables</div>
+    <div class="feat-chip"><span class="icon">🏆</span> Progress Tracking</div>
+  </div>
+</section>
+
+<div class="card-wrap">
+  <div class="main-card">
+    <div class="card-title">PLATFORM ACCESS</div>
+    <div class="card-sub">New student? Request access. Got your token? Enter below.</div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('request')">Request Access</button>
+      <button class="tab-btn" onclick="switchTab('enter')">Enter Platform</button>
+    </div>
+
+    <!-- REQUEST FORM -->
+    <div class="form-panel active" id="panel-request">
+      <div id="msg-request" class="msg-box"></div>
+
+      <div class="field-group">
+        <label class="field-label">Full Name</label>
+        <input class="field-input" id="req-name" type="text" placeholder="e.g. Rahul Sharma" autocomplete="off"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email Address</label>
+        <input class="field-input" id="req-email" type="email" placeholder="your@email.com" autocomplete="off"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Batch / Course</label>
+        <input class="field-input" id="req-batch" type="text" placeholder="e.g. RAP Batch 2025 - Cohort 3" autocomplete="off"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Experience Level</label>
+        <select class="field-input" id="req-level">
+          <option value="">— Select —</option>
+          <option value="Beginner">Beginner (No ABAP knowledge)</option>
+          <option value="Intermediate">Intermediate (Basic ABAP)</option>
+          <option value="Advanced">Advanced (OOP/RAP aware)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Why do you want access?</label>
+        <input class="field-input" id="req-reason" type="text" placeholder="Brief reason..." autocomplete="off"/>
+      </div>
+
+      <button class="btn-primary" id="btn-request" onclick="submitRequest()">
+        <span>SUBMIT ACCESS REQUEST</span>
+        <div class="btn-loader"></div>
+      </button>
+    </div>
+
+    <!-- ENTER PLATFORM -->
+    <div class="form-panel" id="panel-enter">
+      <div id="msg-enter" class="msg-box info">
+        Enter the access token sent to your email after HR approval.
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Email Address</label>
+        <input class="field-input" id="ent-email" type="email" placeholder="your@email.com" autocomplete="off"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Access Token</label>
+        <div class="token-input-wrap">
+          <input class="field-input" id="ent-token" type="password" placeholder="SZC-XXXX-XXXX-XXXX" autocomplete="off" style="padding-right:44px"/>
+          <span class="token-eye" onclick="toggleTokenVis(this)">👁️</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-enter" onclick="enterPlatform()">
+        <span>🚀 ENTER PLATFORM</span>
+        <div class="btn-loader"></div>
+      </button>
+
+      <div class="divider">NEED ACCESS?</div>
+      <div style="text-align:center;font-size:12px;color:var(--text-dim);">
+        Switch to <a href="#" onclick="switchTab('request');return false;" style="color:var(--neon-cyan)">Request Access</a> tab if you haven't applied yet.
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  &copy; 2025 SAPZCodes &nbsp;·&nbsp; All rights reserved &nbsp;·&nbsp;
+  <a href="mailto:hr@sapzcodes.com">hr@sapzcodes.com</a>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STARFIELD ──
+(function(){
+  const c = document.getElementById('starfield');
+  const ctx = c.getContext('2d');
+  let stars = [];
+  function resize(){ c.width=innerWidth; c.height=innerHeight; init(); }
+  function init(){
+    stars=[];
+    for(let i=0;i<160;i++) stars.push({
+      x:Math.random()*c.width, y:Math.random()*c.height,
+      r:Math.random()*1.2+0.2, o:Math.random(), s:Math.random()*0.004+0.001
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s=>{
+      s.o+=s.s; if(s.o>1||s.o<0) s.s*=-1;
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,245,255,${s.o*0.6})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);
+  resize(); draw();
+})();
+
+// ── TABS ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (tab==='request'&&i===0)||(tab==='enter'&&i===1));
+  });
+  document.getElementById('panel-request').classList.toggle('active', tab==='request');
+  document.getElementById('panel-enter').classList.toggle('active', tab==='enter');
+}
+
+// ── TOAST ──
+function showToast(msg, duration=4000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),duration);
+}
+
+// ── SHOW MESSAGE ──
+function showMsg(id, msg, type){
+  const el=document.getElementById(id);
+  el.className='msg-box '+type;
+  el.textContent=msg;
+}
+
+// ── TOGGLE TOKEN VIS ──
+function toggleTokenVis(el){
+  const inp=document.getElementById('ent-token');
+  if(inp.type==='password'){ inp.type='text'; el.textContent='🙈'; }
+  else { inp.type='password'; el.textContent='👁️'; }
+}
+
+// ── GOOGLE APPS SCRIPT ENDPOINT ──
+// ⚠️ REPLACE THIS WITH YOUR DEPLOYED APPS SCRIPT WEB APP URL
+const GAS_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+
+// ── SUBMIT REQUEST ──
+async function submitRequest(){
+  const name  = document.getElementById('req-name').value.trim();
+  const email = document.getElementById('req-email').value.trim();
+  const batch = document.getElementById('req-batch').value.trim();
+  const level = document.getElementById('req-level').value;
+  const reason= document.getElementById('req-reason').value.trim();
+
+  if(!name||!email||!batch||!level||!reason){
+    showMsg('msg-request','⚠️ Please fill all fields.','error'); return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    showMsg('msg-request','⚠️ Invalid email address.','error'); return;
+  }
+
+  const btn=document.getElementById('btn-request');
+  btn.classList.add('loading'); btn.disabled=true;
+
+  try {
+    const res = await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'request',name,email,batch,level,reason})
+    });
+    const data = await res.json();
+    if(data.status==='ok'){
+      showMsg('msg-request','✅ Request submitted! HR will review and email you within 24–48 hrs.','success');
+      ['req-name','req-email','req-batch','req-reason'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('req-level').value='';
+      showToast('🎉 Access request sent to hr@sapzcodes.com!');
+    } else {
+      showMsg('msg-request','❌ '+( data.message||'Something went wrong. Try again.'),'error');
+    }
+  } catch(e){
+    showMsg('msg-request','❌ Network error. Check your connection.','error');
+  } finally {
+    btn.classList.remove('loading'); btn.disabled=false;
+  }
+}
+
+// ── ENTER PLATFORM ──
+async function enterPlatform(){
+  const email = document.getElementById('ent-email').value.trim();
+  const token = document.getElementById('ent-token').value.trim().toUpperCase();
+
+  if(!email||!token){
+    showMsg('msg-enter','⚠️ Enter your email and token.','error'); return;
+  }
+
+  const btn=document.getElementById('btn-enter');
+  btn.classList.add('loading'); btn.disabled=true;
+
+  try {
+    const res = await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'verify',email,token})
+    });
+    const data = await res.json();
+    if(data.status==='ok'){
+      showMsg('msg-enter','✅ Access granted! Redirecting...','success');
+      // Store session (simple, non-critical — real auth is server-side)
+      sessionStorage.setItem('szc_email', email);
+      sessionStorage.setItem('szc_token', token);
+      sessionStorage.setItem('szc_name',  data.name||'Student');
+      showToast('🚀 Welcome, '+( data.name||'Student')+'! Loading platform...');
+      setTimeout(()=>{ window.location.href='loading.html'; }, 1800);
+    } else {
+      showMsg('msg-enter','❌ '+(data.message||'Invalid token or email.'),'error');
+    }
+  } catch(e){
+    showMsg('msg-enter','❌ Network error. Try again.','error');
+  } finally {
+    btn.classList.remove('loading'); btn.disabled=false;
+  }
+}
+
+// Allow Enter key in token/email
+document.getElementById('ent-token').addEventListener('keydown',e=>{ if(e.key==='Enter') enterPlatform(); });
+document.getElementById('ent-email').addEventListener('keydown',e=>{ if(e.key==='Enter') enterPlatform(); });
+</script>
+</body>
+</html>
