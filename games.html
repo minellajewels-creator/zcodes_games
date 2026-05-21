@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAPZCodes — Learning Games</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#020B18;font-family:'Exo 2',sans-serif;overflow-x:hidden;}
+    #root{min-height:100vh;}
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);}
+    ::-webkit-scrollbar-thumb{background:rgba(0,245,255,0.25);border-radius:3px;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── AUTH GUARD ──
+if(!sessionStorage.getItem('szc_token')) window.location.href='index.html';
+const studentName = sessionStorage.getItem('szc_name') || 'Student';
+
+// ══════════════════════════════════════════════════════════
+// GAME DATA
+// ══════════════════════════════════════════════════════════
+
+// GAME 1: ABAP Syntax Quiz
+const QUIZ_QUESTIONS = [
+  { q:"Which keyword is used to declare an internal table?", opts:["DATA","TABLE","ITAB","DECLARE"], ans:0, exp:"DATA lt_table TYPE TABLE OF ... declares an internal table." },
+  { q:"What does sy-subrc = 0 mean?", opts:["Error occurred","Success / Record found","Table is empty","Loop ended"], ans:1, exp:"sy-subrc = 0 means the last operation was successful (e.g., SELECT found records)." },
+  { q:"Which statement reads one row from an internal table?", opts:["SELECT SINGLE","READ TABLE","FETCH","GET TABLE"], ans:1, exp:"READ TABLE lt_tab INTO ls_row WITH KEY field = value." },
+  { q:"In RAP, what does an unmanaged implementation mean?", opts:["Framework manages CRUD","Developer writes own save logic","No behavior definition needed","Only read operations"], ans:1, exp:"Unmanaged RAP: Developer writes all CRUD logic in the save_modified method." },
+  { q:"Which CDS annotation exposes a view as OData service?", opts:["@OData.publish","@Fiori.Launch","@OData.entitySet","@Sap.semantics"], ans:0, exp:"@OData.publish: true on the consumption view exposes it as an OData V2/V4 service." },
+  { q:"What is the correct SELECT syntax for HANA-optimized query?", opts:["SELECT * FROM mara","SELECT * FROM I_Material INTO TABLE @lt_mat","SELECT ALL FROM mara","FETCH mara INTO lt_mat"], ans:1, exp:"Use CDS view names (I_Material) with INTO TABLE @lt_mat (ABAP 7.40+ syntax)." },
+  { q:"Which method in a RAP behavior impl handles creating records?", opts:["CREATE","create","MODIFY_ENTITY","create_by_association"], ans:1, exp:"The 'create' method in the behavior implementation class handles CREATE operations." },
+  { q:"What does AMDP stand for?", opts:["ABAP Managed Dynamic Procedure","ABAP Managed Database Procedure","Advanced Modeled Data Processing","Automated MDX Data Processor"], ans:1, exp:"AMDP = ABAP Managed Database Procedure — runs native HANA SQLScript inside ABAP class methods." },
+  { q:"Which annotation makes a field the semantic key in CDS?", opts:["@ObjectModel.text.element","@Semantics.businessDate.at","@ObjectModel.semanticKey","@UI.selectionField"], ans:2, exp:"@ObjectModel.semanticKey: ['Field'] marks the business key of the entity." },
+  { q:"In a Fiori Elements app, which annotation enables a search filter?", opts:["@UI.lineItem","@UI.selectionField","@Search.defaultSearchElement","@UI.headerInfo"], ans:1, exp:"@UI.selectionField: [{ position: 10 }] makes the field appear in the Fiori filter bar." },
+  { q:"What does BDEF stand for in RAP?", opts:["Business Data Entity Framework","Behavior Definition","Business Definition Extension File","BAPI Definition Entity File"], ans:1, exp:"BDEF = Behavior Definition — defines the operations (CRUD + actions) available on a RAP entity." },
+  { q:"Which FM is used to create Handling Units?", opts:["HU_CREATE_HU","VHUPRT2HU_CREATE_HUS","WS_DELIVERY_UPDATE","LE_GO_CREATE_HANDLING_UNIT"], ans:1, exp:"VHUPRT2HU_CREATE_HUS is the standard FM for creating Handling Units from production orders." },
+  { q:"In ABAP OOP, what is the correct way to call a static method?", opts:["obj->method()","class=>method()","class->method()","CALL METHOD class-method"], ans:1, exp:"Static methods are called with class=>method() using the class name and => operator." },
+  { q:"Which CDS annotation links a field to its text/description?", opts:["@ObjectModel.text.association","@Semantics.text","@UI.textArrangement","@ObjectModel.text.element"], ans:3, exp:"@ObjectModel.text.element: ['TextFieldName'] links a code field to its description text." },
+  { q:"What is the purpose of the @UI.facet annotation?", opts:["Filter bar config","Object page section layout","Table column config","Action button placement"], ans:1, exp:"@UI.facet defines sections/groups on a Fiori Object Page, organizing field groups and tables." },
+];
+
+// GAME 2: Code Debugger — find the bug
+const DEBUG_CHALLENGES = [
+  {
+    title:"SELECT syntax bug",
+    buggy:`DATA lt_mat TYPE TABLE OF i_material.
+SELECT *
+  FROM i_material
+  INTO lt_mat.`,
+    fixed:`DATA lt_mat TYPE TABLE OF i_material.
+SELECT *
+  FROM i_material
+  INTO TABLE @lt_mat.`,
+    hint:"Missing TABLE keyword and @ symbol for host variable",
+    explanation:"In ABAP 7.40+, you must use INTO TABLE @lt_mat. The @ is required for inline/new syntax, and TABLE is needed for internal tables."
+  },
+  {
+    title:"Loop variable mistake",
+    buggy:`LOOP AT lt_orders INTO ls_order.
+  WRITE: / ls_orders-salesorder.
+ENDLOOP.`,
+    fixed:`LOOP AT lt_orders INTO ls_order.
+  WRITE: / ls_order-salesorder.
+ENDLOOP.`,
+    hint:"Check the variable name inside the loop",
+    explanation:"ls_orders (plural) doesn't exist. The loop variable is ls_order (singular). Typos like this are common ABAP bugs."
+  },
+  {
+    title:"RAP action missing RAISING",
+    buggy:`METHODS create_hu
+  IMPORTING
+    it_keys TYPE TABLE OF zpphucreate
+  CHANGING
+    ct_result TYPE TABLE OF zpphucreate_result.`,
+    fixed:`METHODS create_hu
+  IMPORTING
+    it_keys TYPE TABLE OF zpphucreate
+  CHANGING
+    ct_result TYPE TABLE OF zpphucreate_result
+  RAISING
+    cx_rap_bo_action_result.`,
+    hint:"RAP action methods need an exception declaration",
+    explanation:"RAP action methods must include RAISING cx_rap_bo_action_result to properly propagate errors back to the framework."
+  },
+  {
+    title:"Missing WHERE condition",
+    buggy:`SELECT vbeln, posnr, matnr
+  FROM vbap
+  INTO TABLE @lt_items.`,
+    fixed:`SELECT vbeln, posnr, matnr
+  FROM I_SalesOrderItem
+  INTO TABLE @lt_items
+  WHERE vbeln = @lv_order.`,
+    hint:"Selecting from physical table + no filter = bad practice on HANA",
+    explanation:"Always select from CDS views (not physical tables like VBAP) and always add WHERE conditions. Full table scans destroy HANA performance."
+  },
+  {
+    title:"COMMIT WORK in RAP",
+    buggy:`METHOD save_modified.
+  LOOP AT create ASSIGNING FIELD-SYMBOL(<fs_create>).
+    INSERT zpphuprdtbl FROM @<fs_create>.
+  ENDLOOP.
+  COMMIT WORK.
+ENDMETHOD.`,
+    fixed:`METHOD save_modified.
+  LOOP AT create ASSIGNING FIELD-SYMBOL(<fs_create>).
+    INSERT zpphuprdtbl FROM @<fs_create>.
+  ENDLOOP.
+  "No COMMIT WORK — RAP framework handles LUW!
+ENDMETHOD.`,
+    hint:"RAP controls the LUW — you must not commit manually",
+    explanation:"In RAP unmanaged implementations, the framework controls the Logical Unit of Work. Adding COMMIT WORK violates the RAP contract and causes runtime errors."
+  },
+];
+
+// GAME 3: CDS Annotation Match
+const ANNOTATION_PAIRS = [
+  { annotation:"@UI.lineItem", meaning:"Makes field visible in table/list view" },
+  { annotation:"@UI.selectionField", meaning:"Shows field in Fiori filter bar" },
+  { annotation:"@UI.headerInfo", meaning:"Defines object page title & subtitle" },
+  { annotation:"@ObjectModel.semanticKey", meaning:"Marks the business key field" },
+  { annotation:"@Semantics.amount.currencyCode", meaning:"Links amount field to currency" },
+  { annotation:"@Semantics.quantity.unitOfMeasure", meaning:"Links quantity to its UoM field" },
+  { annotation:"@OData.publish", meaning:"Exposes CDS view as OData service" },
+  { annotation:"@UI.facet", meaning:"Defines Object Page section layout" },
+  { annotation:"@ObjectModel.text.element", meaning:"Links code to its description text" },
+  { annotation:"@Search.defaultSearchElement", meaning:"Enables smart search on field" },
+];
+
+// GAME 4: SAP Table Detective — identify the table
+const TABLE_DETECTIVE = [
+  { clue:"I store material master general data. Every material in SAP lives here.", answer:"MARA", options:["MARA","MARC","MAKT","MARM"], cds:"I_Material" },
+  { clue:"I hold Sales Order header data — document number, sold-to party, net value.", answer:"VBAK", options:["VBAK","VBAP","VBFA","LIKP"], cds:"I_SalesOrder" },
+  { clue:"I contain Purchase Order header — vendor, company code, PO date.", answer:"EKKO", options:["EKKO","EKPO","EKAN","EKET"], cds:"I_PurchaseOrder" },
+  { clue:"I store Customer/Vendor master general data for business partners.", answer:"KNA1", options:["KNA1","LFA1","BUT000","KNVV"], cds:"I_BusinessPartner" },
+  { clue:"I am the G/L Account Line Items table — posting date, amount, document.", answer:"BSEG", options:["BSEG","BKPF","FAGLFLEXA","ACDOCA"], cds:"I_JournalEntryItem" },
+  { clue:"I store Production Order header — order type, material, basic dates.", answer:"AUFK", options:["AUFK","AFKO","AFPO","AUFM"], cds:"I_ProductionOrder" },
+  { clue:"I hold material descriptions — one row per material per language.", answer:"MAKT", options:["MAKT","MARA","MBEW","MARD"], cds:"I_MaterialText" },
+  { clue:"I store Stock Overview data — plant, storage location, unrestricted stock.", answer:"MARD", options:["MARD","MARA","MBEW","MKPF"], cds:"I_MRPElement" },
+];
+
+// GAME 5: RAP Concept Sorter
+const RAP_SORTER = {
+  items: [
+    { id:1, text:"Interface CDS View (ZI_)", layer:"Interface Layer" },
+    { id:2, text:"Consumption CDS View (ZC_)", layer:"Consumption Layer" },
+    { id:3, text:"Behavior Definition (BDEF)", layer:"Behavior Layer" },
+    { id:4, text:"Behavior Implementation Class (ZBP_)", layer:"Behavior Layer" },
+    { id:5, text:"OData Service (SRVD)", layer:"Service Layer" },
+    { id:6, text:"Metadata Extension (ZMDEX)", layer:"Consumption Layer" },
+    { id:7, text:"Business Service Binding", layer:"Service Layer" },
+    { id:8, text:"AMDP Class for DB Logic", layer:"Behavior Layer" },
+  ],
+  layers: ["Interface Layer", "Consumption Layer", "Behavior Layer", "Service Layer"]
+};
+
+// GAME 6: Speed Code — type the ABAP statement correctly
+const SPEED_CHALLENGES = [
+  "SELECT * FROM I_Material INTO TABLE @lt_mat UP TO 10 ROWS.",
+  "LOOP AT lt_mat INTO DATA(ls_mat).",
+  "IF sy-subrc = 0.",
+  "READ TABLE lt_tab INTO ls_row WITH KEY matnr = lv_mat.",
+  "SORT lt_orders BY netamount DESCENDING.",
+  "DELETE lt_items WHERE status = 'X'.",
+  "COLLECT ls_total INTO lt_totals.",
+  "MODIFY lt_tab FROM ls_row TRANSPORTING status WHERE matnr = ls_row-matnr.",
+];
+
+// ══════════════════════════════════════════════════════════
+// STYLES
+// ══════════════════════════════════════════════════════════
+const C = {
+  bg:'#020B18', panel:'rgba(4,16,32,0.95)',
+  cyan:'#00F5FF', green:'#39FF14', blue:'#0057A8',
+  gold:'#F0AB00', red:'#FF4757', purple:'#A855F7',
+  text:'#E0F4FF', dim:'#7AA8C4',
+  border:'rgba(0,245,255,0.18)',
+};
+
+const css = (obj) => obj;
+
+// ══════════════════════════════════════════════════════════
+// SHARED COMPONENTS
+// ══════════════════════════════════════════════════════════
+function TopBar({ onBack }) {
+  return (
+    <div style={{display:'flex',alignItems:'center',padding:'0 20px',height:'52px',background:'rgba(2,10,24,0.97)',borderBottom:`1px solid ${C.border}`,gap:'12px',position:'sticky',top:0,zIndex:100}}>
+      <span style={{fontFamily:"'Orbitron',monospace",fontSize:'15px',fontWeight:900,color:C.cyan,letterSpacing:'2px'}}>SAPZCODES</span>
+      <span style={{fontSize:'10px',color:'rgba(0,245,255,0.4)',fontFamily:"'Share Tech Mono',monospace"}}>/  LEARNING ARENA</span>
+      <div style={{marginLeft:'auto',display:'flex',gap:'10px',alignItems:'center'}}>
+        <span style={{fontSize:'11px',color:'#3a6080',fontFamily:"'Share Tech Mono',monospace"}}>👤 {studentName}</span>
+        <a href="executor.html" style={{padding:'6px 14px',background:'rgba(0,87,168,0.2)',border:'1px solid rgba(0,87,168,0.35)',borderRadius:'6px',color:C.dim,fontSize:'11px',textDecoration:'none'}}>🖥️ Executor</a>
+        <a href="index.html" style={{padding:'6px 12px',background:'rgba(255,71,87,0.1)',border:'1px solid rgba(255,71,87,0.3)',borderRadius:'6px',color:'#FF6B6B',fontSize:'11px',textDecoration:'none'}} onClick={()=>sessionStorage.clear()}>Sign Out</a>
+      </div>
+    </div>
+  );
+}
+
+function ScoreBadge({ score, total }) {
+  const pct = total > 0 ? Math.round((score/total)*100) : 0;
+  const color = pct >= 80 ? C.green : pct >= 50 ? C.gold : C.red;
+  return (
+    <div style={{display:'inline-flex',alignItems:'center',gap:'8px',padding:'6px 16px',background:`rgba(0,0,0,0.4)`,border:`1px solid ${color}40`,borderRadius:'20px'}}>
+      <span style={{fontFamily:"'Orbitron',monospace",fontSize:'16px',color,fontWeight:900}}>{score}/{total}</span>
+      <span style={{fontSize:'11px',color:C.dim}}>({pct}%)</span>
+    </div>
+  );
+}
+
+function Btn({ children, onClick, color='blue', style={} }) {
+  const colors = {
+    blue:{bg:'linear-gradient(135deg,#0057A8,#0096FF)',border:'transparent',c:'#fff'},
+    green:{bg:'rgba(57,255,20,0.1)',border:'rgba(57,255,20,0.4)',c:C.green},
+    red:{bg:'rgba(255,71,87,0.1)',border:'rgba(255,71,87,0.4)',c:'#FF6B6B'},
+    gold:{bg:'rgba(240,171,0,0.1)',border:'rgba(240,171,0,0.4)',c:C.gold},
+    cyan:{bg:'rgba(0,245,255,0.1)',border:'rgba(0,245,255,0.35)',c:C.cyan},
+    purple:{bg:'rgba(168,85,247,0.15)',border:'rgba(168,85,247,0.4)',c:C.purple},
+  };
+  const cc = colors[color];
+  return (
+    <button onClick={onClick} style={{padding:'10px 22px',background:cc.bg,border:`1px solid ${cc.border}`,borderRadius:'8px',color:cc.c,fontSize:'13px',fontWeight:600,cursor:'pointer',fontFamily:"'Exo 2',sans-serif",transition:'all 0.2s',...style}}>
+      {children}
+    </button>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 1: QUIZ
+// ══════════════════════════════════════════════════════════
+function QuizGame({ onBack }) {
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [showExp, setShowExp] = useState(false);
+  const [shuffled] = useState(() => [...QUIZ_QUESTIONS].sort(()=>Math.random()-0.5).slice(0,10));
+
+  const q = shuffled[idx];
+
+  const choose = (i) => {
+    if(selected !== null) return;
+    setSelected(i);
+    if(i === q.ans) setScore(s=>s+1);
+    setShowExp(true);
+  };
+
+  const next = () => {
+    if(idx+1 >= shuffled.length) { setDone(true); return; }
+    setIdx(i=>i+1); setSelected(null); setShowExp(false);
+  };
+
+  if(done) return (
+    <GameResult score={score} total={shuffled.length} onBack={onBack} onReplay={()=>{setIdx(0);setScore(0);setDone(false);setSelected(null);setShowExp(false);}} gameName="ABAP Quiz" />
+  );
+
+  return (
+    <div style={{maxWidth:700,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',color:C.dim}}>Q {idx+1} / {shuffled.length}</div>
+        <ScoreBadge score={score} total={idx + (selected!==null?1:0)} />
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+      {/* Progress bar */}
+      <div style={{height:3,background:'rgba(0,245,255,0.1)',borderRadius:2,marginBottom:28}}>
+        <div style={{height:'100%',width:`${((idx+1)/shuffled.length)*100}%`,background:`linear-gradient(90deg,${C.blue},${C.cyan})`,borderRadius:2,transition:'width 0.5s'}}/>
+      </div>
+
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:16,padding:28,marginBottom:20,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${C.cyan},transparent)`}}/>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'11px',color:C.cyan,letterSpacing:'2px',marginBottom:12}}>QUESTION</div>
+        <div style={{fontSize:'17px',fontWeight:600,lineHeight:1.5,color:C.text}}>{q.q}</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+        {q.opts.map((opt,i) => {
+          let bg = 'rgba(0,20,40,0.6)', border = 'rgba(0,245,255,0.15)', col = C.dim;
+          if(selected !== null) {
+            if(i === q.ans) { bg='rgba(57,255,20,0.12)'; border='rgba(57,255,20,0.5)'; col=C.green; }
+            else if(i === selected && i !== q.ans) { bg='rgba(255,71,87,0.12)'; border='rgba(255,71,87,0.5)'; col='#FF6B6B'; }
+          }
+          return (
+            <button key={i} onClick={()=>choose(i)} style={{padding:'14px 18px',background:bg,border:`1px solid ${border}`,borderRadius:10,color:col,fontSize:'13px',cursor:selected!==null?'default':'pointer',textAlign:'left',lineHeight:1.4,transition:'all 0.25s',fontFamily:"'Exo 2',sans-serif",fontWeight:500}}>
+              <span style={{fontFamily:"'Share Tech Mono',monospace",color:C.dim,marginRight:8}}>{'ABCD'[i]}.</span> {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      {showExp && (
+        <div style={{background:selected===q.ans?'rgba(57,255,20,0.07)':'rgba(255,71,87,0.07)',border:`1px solid ${selected===q.ans?'rgba(57,255,20,0.3)':'rgba(255,71,87,0.3)'}`,borderRadius:10,padding:'14px 18px',marginBottom:16}}>
+          <div style={{fontSize:'12px',fontWeight:700,color:selected===q.ans?C.green:'#FF6B6B',marginBottom:6}}>{selected===q.ans?'✅ Correct!':'❌ Wrong!'}</div>
+          <div style={{fontSize:'12px',color:C.dim,lineHeight:1.6}}>{q.exp}</div>
+        </div>
+      )}
+
+      {selected !== null && (
+        <div style={{textAlign:'center'}}>
+          <Btn onClick={next} color="blue">{idx+1>=shuffled.length?'See Results →':'Next Question →'}</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 2: DEBUG CHALLENGE
+// ══════════════════════════════════════════════════════════
+function DebugGame({ onBack }) {
+  const [idx, setIdx] = useState(0);
+  const [code, setCode] = useState(DEBUG_CHALLENGES[0].buggy);
+  const [result, setResult] = useState(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
+
+  const ch = DEBUG_CHALLENGES[idx];
+
+  const check = () => {
+    const userTrimmed = code.replace(/\s+/g,' ').trim().toLowerCase();
+    const fixedTrimmed = ch.fixed.replace(/\s+/g,' ').trim().toLowerCase();
+    const correct = userTrimmed === fixedTrimmed || code.includes(ch.fixed.split('\n').find(l=>l.trim()&&!ch.buggy.includes(l.trim()))||'__no_match__');
+    setResult(correct ? 'correct' : 'wrong');
+    if(correct && !hintUsed) setScore(s=>s+1);
+    else if(correct && hintUsed) setScore(s=>s+0.5);
+  };
+
+  const next = () => {
+    if(idx+1 >= DEBUG_CHALLENGES.length) { setDone(true); return; }
+    const ni = idx+1;
+    setIdx(ni); setCode(DEBUG_CHALLENGES[ni].buggy); setResult(null); setShowHint(false); setHintUsed(false);
+  };
+
+  if(done) return (
+    <GameResult score={Math.round(score)} total={DEBUG_CHALLENGES.length} onBack={onBack}
+      onReplay={()=>{setIdx(0);setCode(DEBUG_CHALLENGES[0].buggy);setResult(null);setScore(0);setDone(false);setShowHint(false);setHintUsed(false);}}
+      gameName="Debug Master" />
+  );
+
+  return (
+    <div style={{maxWidth:780,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',color:C.dim}}>Bug {idx+1} / {DEBUG_CHALLENGES.length}</div>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'13px',color:C.gold,fontWeight:700}}>Score: {score} pts</div>
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+
+      <div style={{background:C.panel,border:`1px solid ${C.border}`,borderRadius:16,padding:24,marginBottom:16,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${C.red},transparent)`}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <div>
+            <div style={{fontFamily:"'Orbitron',monospace",fontSize:'11px',color:'#FF4757',letterSpacing:'2px',marginBottom:4}}>🐛 BUG #{idx+1}</div>
+            <div style={{fontSize:'15px',fontWeight:700,color:C.text}}>{ch.title}</div>
+          </div>
+          <Btn onClick={()=>{setShowHint(true);setHintUsed(true);}} color="gold" style={{padding:'6px 14px',fontSize:'11px',opacity:showHint?0.5:1}}>
+            {showHint?'Hint shown':'💡 Hint (-0.5)'}
+          </Btn>
+        </div>
+        <div style={{fontSize:'12px',color:C.dim,marginBottom:14,lineHeight:1.5}}>Fix the buggy ABAP code below. Edit directly in the editor.</div>
+        {showHint && <div style={{background:'rgba(240,171,0,0.08)',border:'1px solid rgba(240,171,0,0.3)',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:'12px',color:C.gold}}>💡 {ch.hint}</div>}
+        <textarea value={code} onChange={e=>setCode(e.target.value)}
+          style={{width:'100%',minHeight:130,background:'rgba(0,0,0,0.5)',border:'1px solid rgba(0,245,255,0.15)',borderRadius:8,padding:'12px 14px',color:'#E0F4FF',fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',lineHeight:1.7,resize:'vertical',outline:'none'}}
+        />
+      </div>
+
+      {result && (
+        <div style={{background:result==='correct'?'rgba(57,255,20,0.07)':'rgba(255,71,87,0.07)',border:`1px solid ${result==='correct'?'rgba(57,255,20,0.3)':'rgba(255,71,87,0.3)'}`,borderRadius:10,padding:'14px 18px',marginBottom:16}}>
+          <div style={{fontSize:'13px',fontWeight:700,color:result==='correct'?C.green:'#FF6B6B',marginBottom:6}}>
+            {result==='correct'?`✅ Fixed! +${hintUsed?'0.5':'1'} point`:'❌ Not quite. Check the hint and try again.'}
+          </div>
+          {result==='correct' && <div style={{fontSize:'12px',color:C.dim,lineHeight:1.6}}>{ch.explanation}</div>}
+          {result==='wrong' && <div style={{fontSize:'12px',color:C.dim}}>Compare your code carefully with the original. Look for the exact difference.</div>}
+        </div>
+      )}
+
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        {!result && <Btn onClick={check} color="blue">🔍 Check Fix</Btn>}
+        {result==='correct' && <Btn onClick={next} color="green">{idx+1>=DEBUG_CHALLENGES.length?'See Results →':'Next Bug →'}</Btn>}
+        {result==='wrong' && <><Btn onClick={()=>setResult(null)} color="cyan">Try Again</Btn><Btn onClick={()=>{setResult('correct');}} color="gold">Show Solution</Btn></>}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 3: ANNOTATION MATCH
+// ══════════════════════════════════════════════════════════
+function AnnotationMatch({ onBack }) {
+  const [pairs] = useState(() => [...ANNOTATION_PAIRS].sort(()=>Math.random()-0.5).slice(0,8));
+  const [selectedAnnot, setSelectedAnnot] = useState(null);
+  const [matched, setMatched] = useState([]);
+  const [wrong, setWrong] = useState(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [shuffledMeanings] = useState(() => [...ANNOTATION_PAIRS].sort(()=>Math.random()-0.5).slice(0,8));
+
+  // Only show meanings from our pairs
+  const meanings = pairs.map(p=>p.meaning).sort(()=>Math.random()-0.5);
+  const [shuffMeanings] = useState(meanings);
+
+  const selectAnnot = (ann) => {
+    if(matched.includes(ann)) return;
+    setSelectedAnnot(ann);
+  };
+
+  const selectMeaning = (meaning) => {
+    if(!selectedAnnot) return;
+    const correct = pairs.find(p=>p.annotation===selectedAnnot)?.meaning === meaning;
+    if(correct) {
+      setMatched(m=>[...m,selectedAnnot]);
+      setScore(s=>s+1);
+      setSelectedAnnot(null);
+      if(matched.length+1 >= pairs.length) setTimeout(()=>setDone(true), 600);
+    } else {
+      setWrong({ann:selectedAnnot, meaning});
+      setTimeout(()=>{setWrong(null);setSelectedAnnot(null);},1000);
+    }
+  };
+
+  if(done) return (
+    <GameResult score={score} total={pairs.length} onBack={onBack}
+      onReplay={()=>window.location.reload()} gameName="Annotation Match" />
+  );
+
+  return (
+    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'13px',color:C.cyan}}>Match the CDS Annotations</div>
+        <ScoreBadge score={score} total={pairs.length} />
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+      <div style={{fontSize:'12px',color:C.dim,marginBottom:20,textAlign:'center'}}>Click an annotation (left) → then its meaning (right)</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        {/* Annotations column */}
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'10px',color:C.dim,letterSpacing:'2px',textAlign:'center',marginBottom:4}}>ANNOTATIONS</div>
+          {pairs.map(p => {
+            const isMatched = matched.includes(p.annotation);
+            const isSelected = selectedAnnot === p.annotation;
+            const isWrong = wrong?.ann === p.annotation;
+            let border = 'rgba(0,245,255,0.15)', bg = 'rgba(0,10,25,0.6)', col = C.dim;
+            if(isMatched) { border='rgba(57,255,20,0.5)'; bg='rgba(57,255,20,0.08)'; col=C.green; }
+            else if(isWrong) { border='rgba(255,71,87,0.6)'; bg='rgba(255,71,87,0.1)'; col='#FF6B6B'; }
+            else if(isSelected) { border=C.cyan; bg='rgba(0,245,255,0.08)'; col=C.cyan; }
+            return (
+              <button key={p.annotation} onClick={()=>selectAnnot(p.annotation)} disabled={isMatched}
+                style={{padding:'12px 16px',background:bg,border:`1px solid ${border}`,borderRadius:8,color:col,fontSize:'12px',cursor:isMatched?'default':'pointer',textAlign:'left',fontFamily:"'Share Tech Mono',monospace",transition:'all 0.2s',opacity:isMatched?0.6:1}}>
+                {isMatched?'✓ ':''}{p.annotation}
+              </button>
+            );
+          })}
+        </div>
+        {/* Meanings column */}
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'10px',color:C.dim,letterSpacing:'2px',textAlign:'center',marginBottom:4}}>MEANINGS</div>
+          {shuffMeanings.map(m => {
+            const isUsed = matched.some(ann => pairs.find(p=>p.annotation===ann)?.meaning===m);
+            const isWrong = wrong?.meaning === m;
+            let border = 'rgba(0,245,255,0.12)', bg = 'rgba(0,10,25,0.5)', col = C.dim;
+            if(isUsed) { border='rgba(57,255,20,0.4)'; bg='rgba(57,255,20,0.06)'; col='rgba(57,255,20,0.5)'; }
+            else if(isWrong) { border='rgba(255,71,87,0.5)'; bg='rgba(255,71,87,0.08)'; col='#FF6B6B'; }
+            return (
+              <button key={m} onClick={()=>selectMeaning(m)} disabled={isUsed}
+                style={{padding:'12px 16px',background:bg,border:`1px solid ${border}`,borderRadius:8,color:col,fontSize:'12px',cursor:isUsed?'default':'pointer',textAlign:'left',lineHeight:1.4,transition:'all 0.2s',fontFamily:"'Exo 2',sans-serif",opacity:isUsed?0.5:1}}>
+                {isUsed?'✓ ':''}{m}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 4: TABLE DETECTIVE
+// ══════════════════════════════════════════════════════════
+function TableDetective({ onBack }) {
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [shuffled] = useState(() => [...TABLE_DETECTIVE].sort(()=>Math.random()-0.5));
+
+  const q = shuffled[idx];
+
+  const choose = (opt) => {
+    if(selected) return;
+    setSelected(opt);
+    if(opt === q.answer) setScore(s=>s+1);
+  };
+
+  const next = () => {
+    if(idx+1 >= shuffled.length) { setDone(true); return; }
+    setIdx(i=>i+1); setSelected(null);
+  };
+
+  if(done) return (
+    <GameResult score={score} total={shuffled.length} onBack={onBack}
+      onReplay={()=>{setIdx(0);setSelected(null);setScore(0);setDone(false);}} gameName="Table Detective" />
+  );
+
+  return (
+    <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',color:C.dim}}>Case {idx+1} / {shuffled.length}</div>
+        <ScoreBadge score={score} total={idx+(selected?1:0)} />
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+
+      <div style={{background:'rgba(2,8,22,0.9)',border:'1px solid rgba(240,171,0,0.3)',borderRadius:16,padding:28,marginBottom:20,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${C.gold},transparent)`}}/>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'11px',color:C.gold,letterSpacing:'2px',marginBottom:12}}>🕵️ CLUE — IDENTIFY THE SAP TABLE</div>
+        <div style={{fontSize:'16px',lineHeight:1.7,color:C.text,fontStyle:'italic'}}>"{q.clue}"</div>
+        {selected && <div style={{marginTop:14,fontSize:'12px',color:C.dim}}>CDS View equivalent: <span style={{color:C.cyan,fontFamily:"'Share Tech Mono',monospace"}}>{q.cds}</span></div>}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+        {q.options.map(opt => {
+          let border='rgba(0,245,255,0.15)', bg='rgba(0,10,25,0.7)', col=C.dim;
+          if(selected) {
+            if(opt===q.answer) { border='rgba(57,255,20,0.5)'; bg='rgba(57,255,20,0.1)'; col=C.green; }
+            else if(opt===selected && opt!==q.answer) { border='rgba(255,71,87,0.5)'; bg='rgba(255,71,87,0.1)'; col='#FF6B6B'; }
+          }
+          return (
+            <button key={opt} onClick={()=>choose(opt)}
+              style={{padding:'18px',background:bg,border:`1px solid ${border}`,borderRadius:10,color:col,fontSize:'18px',fontWeight:900,fontFamily:"'Orbitron',monospace",cursor:selected?'default':'pointer',transition:'all 0.25s',letterSpacing:'1px'}}>
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div style={{textAlign:'center',marginTop:16}}>
+          <div style={{fontSize:'14px',color:selected===q.answer?C.green:'#FF6B6B',fontWeight:700,marginBottom:16}}>
+            {selected===q.answer?'🎯 Correct! Great detective work!':'❌ Wrong! The answer was '+q.answer}
+          </div>
+          <Btn onClick={next} color="blue">{idx+1>=shuffled.length?'See Results →':'Next Case →'}</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 5: RAP LAYER SORTER
+// ══════════════════════════════════════════════════════════
+function RAPSorter({ onBack }) {
+  const [items] = useState(() => [...RAP_SORTER.items].sort(()=>Math.random()-0.5));
+  const [assignments, setAssignments] = useState({});
+  const [dragItem, setDragItem] = useState(null);
+  const [checked, setChecked] = useState(false);
+  const [score, setScore] = useState(0);
+
+  const assign = (itemId, layer) => {
+    setAssignments(a => ({...a,[itemId]:layer}));
+  };
+
+  const checkAnswers = () => {
+    let s = 0;
+    items.forEach(item => {
+      if(assignments[item.id] === item.layer) s++;
+    });
+    setScore(s);
+    setChecked(true);
+  };
+
+  return (
+    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'13px',color:C.purple}}>RAP Layer Sorter</div>
+        {checked && <ScoreBadge score={score} total={items.length}/>}
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+      <div style={{fontSize:'12px',color:C.dim,marginBottom:20,textAlign:'center'}}>Assign each RAP artifact to its correct layer by clicking buttons below each card</div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:12,marginBottom:24}}>
+        {items.map(item => {
+          const assigned = assignments[item.id];
+          const correct = checked && assigned === item.layer;
+          const wrong = checked && assigned && assigned !== item.layer;
+          let border = assigned ? 'rgba(168,85,247,0.5)' : 'rgba(0,245,255,0.15)';
+          if(correct) border = 'rgba(57,255,20,0.6)';
+          if(wrong) border = 'rgba(255,71,87,0.6)';
+          return (
+            <div key={item.id} style={{background:C.panel,border:`1px solid ${border}`,borderRadius:12,padding:16,transition:'border 0.3s'}}>
+              <div style={{fontSize:'12px',color:C.text,fontWeight:600,marginBottom:12,lineHeight:1.4}}>{item.text}</div>
+              {checked && <div style={{fontSize:'10px',color:correct?C.green:'#FF6B6B',marginBottom:6,fontWeight:700}}>{correct?`✓ ${item.layer}`:`✗ Should be: ${item.layer}`}</div>}
+              {!checked && (
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  {RAP_SORTER.layers.map(layer => (
+                    <button key={layer} onClick={()=>assign(item.id,layer)}
+                      style={{padding:'5px 8px',background:assigned===layer?'rgba(168,85,247,0.2)':'transparent',border:`1px solid ${assigned===layer?'rgba(168,85,247,0.5)':'rgba(0,245,255,0.1)'}`,borderRadius:6,color:assigned===layer?C.purple:C.dim,fontSize:'10px',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}>
+                      {assigned===layer?'●':''} {layer}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {!checked ? (
+        <div style={{textAlign:'center'}}>
+          <Btn onClick={checkAnswers} color="purple" style={{fontSize:'14px',padding:'12px 32px'}}>
+            ✓ Check All Answers
+          </Btn>
+        </div>
+      ) : (
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:'16px',color:score>=6?C.green:score>=4?C.gold:'#FF6B6B',fontFamily:"'Orbitron',monospace",fontWeight:900,marginBottom:16}}>
+            {score}/{items.length} Correct!
+          </div>
+          <Btn onClick={onBack} color="blue">← Back to Games</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME 6: SPEED CODER
+// ══════════════════════════════════════════════════════════
+function SpeedCoder({ onBack }) {
+  const [idx, setIdx] = useState(0);
+  const [input, setInput] = useState('');
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+  const [startTime, setStartTime] = useState(Date.now());
+  const [totalTime, setTotalTime] = useState(0);
+  const [feedback, setFeedback] = useState(null);
+  const [challenges] = useState(()=>[...SPEED_CHALLENGES].sort(()=>Math.random()-0.5));
+  const inputRef = useRef(null);
+
+  const target = challenges[idx];
+  const matched = target.split('').map((ch,i) => ({ ch, ok: input[i] === ch, typed: i < input.length }));
+
+  useEffect(()=>{ inputRef.current?.focus(); setStartTime(Date.now()); }, [idx]);
+
+  const handleInput = (e) => {
+    const val = e.target.value;
+    setInput(val);
+    if(val === target) {
+      const elapsed = Date.now() - startTime;
+      setTotalTime(t=>t+elapsed);
+      setScore(s=>s+1);
+      setFeedback({type:'correct', ms:elapsed});
+      setTimeout(()=>{
+        setFeedback(null);
+        setInput('');
+        if(idx+1>=challenges.length) setDone(true);
+        else setIdx(i=>i+1);
+      }, 800);
+    }
+  };
+
+  const skip = () => {
+    setInput('');
+    if(idx+1>=challenges.length) setDone(true);
+    else setIdx(i=>i+1);
+  };
+
+  if(done) return (
+    <div style={{maxWidth:600,margin:'60px auto',padding:'24px',textAlign:'center'}}>
+      <div style={{fontFamily:"'Orbitron',monospace",fontSize:'24px',color:C.cyan,marginBottom:8}}>⚡ Speed Results</div>
+      <div style={{fontSize:'48px',fontFamily:"'Orbitron',monospace",color:C.green,margin:'20px 0',fontWeight:900}}>{score}/{challenges.length}</div>
+      <div style={{color:C.dim,marginBottom:8}}>Total time: {(totalTime/1000).toFixed(1)}s</div>
+      <div style={{color:C.dim,marginBottom:28}}>Avg per line: {score>0?(totalTime/score/1000).toFixed(1):'—'}s</div>
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        <Btn onClick={()=>{setIdx(0);setScore(0);setDone(false);setInput('');setTotalTime(0);}} color="blue">Play Again</Btn>
+        <Btn onClick={onBack} color="cyan">← Back</Btn>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{maxWidth:760,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',color:C.dim}}>Line {idx+1} / {challenges.length}</div>
+        <div style={{fontFamily:"'Orbitron',monospace",color:C.gold,fontSize:'13px'}}>Score: {score}</div>
+        <Btn onClick={onBack} color="red" style={{padding:'6px 14px',fontSize:'11px'}}>← Back</Btn>
+      </div>
+
+      <div style={{background:'rgba(2,6,16,0.95)',border:`1px solid ${feedback?.type==='correct'?'rgba(57,255,20,0.5)':C.border}`,borderRadius:16,padding:28,marginBottom:20,transition:'border 0.3s'}}>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'11px',color:C.cyan,letterSpacing:'2px',marginBottom:16}}>⚡ TYPE THIS EXACTLY</div>
+        {/* Target with colored chars */}
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'15px',lineHeight:1.8,marginBottom:20,wordBreak:'break-all'}}>
+          {matched.map((m,i) => (
+            <span key={i} style={{color: !m.typed ? '#2d5070' : m.ok ? C.green : '#FF4757', background: !m.ok && m.typed ? 'rgba(255,71,87,0.15)' : 'transparent', borderRadius:2}}>
+              {m.ch}
+            </span>
+          ))}
+        </div>
+        <input ref={inputRef} value={input} onChange={handleInput}
+          style={{width:'100%',background:'rgba(0,0,0,0.4)',border:`1px solid ${input.length>0&&input===target.slice(0,input.length)?'rgba(57,255,20,0.3)':'rgba(0,245,255,0.2)'}`,borderRadius:8,padding:'12px 16px',color:C.text,fontFamily:"'Share Tech Mono',monospace",fontSize:'14px',outline:'none'}}
+          placeholder="Start typing..."
+          spellCheck={false} autoCorrect="off" autoCapitalize="off"
+        />
+        {feedback?.type==='correct' && <div style={{color:C.green,fontFamily:"'Share Tech Mono',monospace",fontSize:'12px',marginTop:8}}>✅ {feedback.ms}ms — Nice!</div>}
+      </div>
+
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        <Btn onClick={skip} color="gold" style={{fontSize:'11px',padding:'8px 18px'}}>Skip →</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME RESULT SCREEN
+// ══════════════════════════════════════════════════════════
+function GameResult({ score, total, onBack, onReplay, gameName }) {
+  const pct = Math.round((score/total)*100);
+  const emoji = pct>=90?'🏆':pct>=70?'⭐':pct>=50?'✅':'📚';
+  const msg = pct>=90?'Outstanding! You are RAP-ready!':pct>=70?'Great job! Keep practicing!':pct>=50?'Good effort! Review the concepts.':'Keep studying — you\'ll get there!';
+  const color = pct>=80?C.green:pct>=50?C.gold:'#FF6B6B';
+  return (
+    <div style={{maxWidth:500,margin:'60px auto',textAlign:'center',padding:'0 20px'}}>
+      <div style={{fontSize:'64px',marginBottom:16}}>{emoji}</div>
+      <div style={{fontFamily:"'Orbitron',monospace",fontSize:'14px',color:C.dim,marginBottom:8,letterSpacing:'2px'}}>{gameName}</div>
+      <div style={{fontFamily:"'Orbitron',monospace",fontSize:'56px',fontWeight:900,color,marginBottom:4,textShadow:`0 0 40px ${color}80`}}>{pct}%</div>
+      <div style={{color:C.dim,marginBottom:6}}>{score} out of {total} correct</div>
+      <div style={{color:C.text,fontSize:'15px',marginBottom:36,lineHeight:1.6}}>{msg}</div>
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        <Btn onClick={onReplay} color="blue">🔄 Play Again</Btn>
+        <Btn onClick={onBack} color="cyan">← All Games</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// GAME TILES (Home)
+// ══════════════════════════════════════════════════════════
+const GAME_TILES = [
+  { id:'quiz', icon:'🧠', name:'ABAP Quiz', desc:'15 questions on ABAP, RAP, CDS, and HANA concepts. Test your theory knowledge.', color:C.cyan, difficulty:'Medium', time:'~8 min', tags:['Theory','ABAP','RAP'] },
+  { id:'debug', icon:'🐛', name:'Debug Master', desc:'Find and fix real ABAP bugs. Learn by spotting mistakes in RAP, SELECT, and OOP code.', color:'#FF6B6B', difficulty:'Hard', time:'~10 min', tags:['Debug','RAP','ABAP'] },
+  { id:'annotmatch', icon:'🎯', name:'Annotation Match', desc:'Match CDS annotations to their purpose. Master the @UI, @Semantics, and @ObjectModel annotations.', color:C.purple, difficulty:'Easy', time:'~5 min', tags:['CDS','Fiori','Annotations'] },
+  { id:'tabledet', icon:'🕵️', name:'Table Detective', desc:'Read the clue and identify the SAP standard table. Perfect for SD/MM/FI module knowledge.', color:C.gold, difficulty:'Medium', time:'~6 min', tags:['Tables','Modules','SD/MM/FI'] },
+  { id:'rapsorter', icon:'🗂️', name:'RAP Layer Sorter', desc:'Drag RAP artifacts into their correct layers — Interface, Consumption, Behavior, or Service.', color:C.purple, difficulty:'Medium', time:'~7 min', tags:['RAP','Architecture','CDS'] },
+  { id:'speedcode', icon:'⚡', name:'Speed Coder', desc:'Type ABAP statements as fast as you can. Build muscle memory for syntax and keywords.', color:C.green, difficulty:'Easy', time:'~4 min', tags:['Speed','Syntax','Practice'] },
+];
+
+function DifficultyBadge({ d }) {
+  const c = d==='Easy'?C.green:d==='Medium'?C.gold:'#FF6B6B';
+  return <span style={{fontSize:'10px',padding:'2px 8px',background:`${c}18`,border:`1px solid ${c}40`,borderRadius:10,color:c,fontWeight:600}}>{d}</span>;
+}
+
+// ══════════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════════
+function App() {
+  const [activeGame, setActiveGame] = useState(null);
+
+  if(activeGame==='quiz')      return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><QuizGame onBack={()=>setActiveGame(null)}/></div>;
+  if(activeGame==='debug')     return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><DebugGame onBack={()=>setActiveGame(null)}/></div>;
+  if(activeGame==='annotmatch')return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><AnnotationMatch onBack={()=>setActiveGame(null)}/></div>;
+  if(activeGame==='tabledet')  return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><TableDetective onBack={()=>setActiveGame(null)}/></div>;
+  if(activeGame==='rapsorter') return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><RAPSorter onBack={()=>setActiveGame(null)}/></div>;
+  if(activeGame==='speedcode') return <div style={{background:C.bg,minHeight:'100vh'}}><TopBar/><SpeedCoder onBack={()=>setActiveGame(null)}/></div>;
+
+  return (
+    <div style={{background:C.bg,minHeight:'100vh'}}>
+      {/* Grid overlay */}
+      <div style={{position:'fixed',inset:0,backgroundImage:'linear-gradient(rgba(0,87,168,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,87,168,0.05) 1px,transparent 1px)',backgroundSize:'50px 50px',pointerEvents:'none',zIndex:0}}/>
+
+      <TopBar/>
+
+      {/* Hero */}
+      <div style={{position:'relative',zIndex:5,textAlign:'center',padding:'52px 20px 36px'}}>
+        <div style={{display:'inline-block',background:'rgba(168,85,247,0.1)',border:'1px solid rgba(168,85,247,0.3)',color:C.purple,fontFamily:"'Share Tech Mono',monospace",fontSize:'11px',letterSpacing:'3px',padding:'5px 18px',borderRadius:20,marginBottom:20}}>
+          🎮 LEARNING ARENA
+        </div>
+        <h1 style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(1.8rem,4vw,3rem)',fontWeight:900,color:C.text,marginBottom:12,lineHeight:1.1}}>
+          SAP ABAP <span style={{color:C.cyan,textShadow:'0 0 30px rgba(0,245,255,0.5)'}}>Game Zone</span>
+        </h1>
+        <p style={{color:C.dim,maxWidth:520,margin:'0 auto',lineHeight:1.7,fontSize:'14px'}}>
+          Learn SAP concepts through interactive challenges. {studentName}, pick a game and level up! 🚀
+        </p>
+      </div>
+
+      {/* Game Tiles */}
+      <div style={{position:'relative',zIndex:5,maxWidth:1100,margin:'0 auto',padding:'0 20px 60px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:20}}>
+        {GAME_TILES.map(g => (
+          <div key={g.id} onClick={()=>setActiveGame(g.id)}
+            style={{background:'rgba(4,14,30,0.9)',border:`1px solid ${g.color}25`,borderRadius:16,padding:24,cursor:'pointer',transition:'all 0.3s',position:'relative',overflow:'hidden'}}
+            onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.borderColor=`${g.color}60`;e.currentTarget.style.boxShadow=`0 12px 40px ${g.color}15`;}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.borderColor=`${g.color}25`;e.currentTarget.style.boxShadow='';}}>
+            {/* Top accent line */}
+            <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${g.color},transparent)`,opacity:0.7}}/>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
+              <div style={{fontSize:'40px',lineHeight:1}}>{g.icon}</div>
+              <DifficultyBadge d={g.difficulty}/>
+            </div>
+            <div style={{fontFamily:"'Orbitron',monospace",fontSize:'15px',fontWeight:700,color:C.text,marginBottom:8}}>{g.name}</div>
+            <div style={{fontSize:'13px',color:C.dim,lineHeight:1.6,marginBottom:16}}>{g.desc}</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {g.tags.map(t=><span key={t} style={{fontSize:'10px',padding:'2px 8px',background:'rgba(0,245,255,0.06)',border:'1px solid rgba(0,245,255,0.12)',borderRadius:10,color:'#5a8aaa'}}>{t}</span>)}
+              </div>
+              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:'10px',color:'#3a6080'}}>⏱ {g.time}</div>
+            </div>
+            {/* Play button */}
+            <div style={{marginTop:18,padding:'10px',background:`${g.color}12`,border:`1px solid ${g.color}30`,borderRadius:8,textAlign:'center',color:g.color,fontFamily:"'Orbitron',monospace",fontSize:'11px',fontWeight:700,letterSpacing:'2px',transition:'background 0.2s'}}>
+              ▶ PLAY NOW
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{position:'relative',zIndex:5,textAlign:'center',padding:'20px',borderTop:`1px solid rgba(0,245,255,0.08)`,color:'#2d5070',fontSize:'11px',fontFamily:"'Share Tech Mono',monospace"}}>
+        © 2025 SAPZCodes · Coimbatore · All rights reserved
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
