@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SAPZCodes — ABAP Executor</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --border: #e2e6ec;
+  --border2: #cdd3db;
+  --green: #3ac14a;
+  --green-dk: #2da03c;
+  --green-lt: #e8f9eb;
+  --green-mid: #b8edbf;
+  --charcoal: #1a1d23;
+  --text: #2c3038;
+  --text2: #5a6270;
+  --muted: #8a93a2;
+  --danger: #e53e3e;
+  --danger-lt: #fff0f0;
+  --warn: #d97706;
+  --warn-lt: #fffbeb;
+  --info: #2563eb;
+  --info-lt: #eff6ff;
+  --success: #16a34a;
+  --success-lt: #f0fdf4;
+  --sidebar-w: 220px;
+  --topbar-h: 52px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.10), 0 4px 10px rgba(0,0,0,0.06);
+  --shadow-green: 0 4px 16px rgba(58,193,74,0.25);
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+
+  /* Editor dark zone */
+  --editor-bg: #0d1117;
+  --editor-panel: #161b22;
+  --editor-border: rgba(58,193,74,0.15);
+  --editor-text: #e6edf3;
+  --editor-dim: #8b949e;
+  --editor-line: #1f2937;
+  --editor-green: #3ac14a;
+  --editor-cyan: #79c0ff;
+  --editor-gold: #e3b341;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 8px; }
+
+/* ── TOPBAR ── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--charcoal);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.topbar-logo {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+  font-family: var(--font);
+}
+.topbar-logo span { color: var(--green); }
+.topbar-sep {
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+}
+.topbar-page {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  font-family: var(--mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar-user {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  font-family: var(--mono);
+}
+.topbar-btn {
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  transition: all 0.18s;
+}
+.topbar-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.topbar-btn.danger { border-color: rgba(229,62,62,0.3); color: rgba(229,62,62,0.7); }
+.topbar-btn.danger:hover { background: var(--danger-lt); color: var(--danger); border-color: var(--danger); }
+.topbar-hamburger {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+  line-height: 1;
+}
+.topbar-hamburger:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* ── BODY LAYOUT ── */
+.app-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--charcoal);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: width 0.25s ease, opacity 0.25s ease;
+}
+.sidebar.collapsed { width: 0; overflow: hidden; opacity: 0; }
+
+.sidebar-section { padding: 16px 12px 8px; }
+.sidebar-section-title {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  font-weight: 700;
+  padding: 0 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: rgba(255,255,255,0.4);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-btn:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.05); }
+.sidebar-btn.active {
+  color: var(--charcoal);
+  background: var(--green);
+  border-color: var(--green-dk);
+  font-weight: 700;
+}
+.sidebar-snippet-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: var(--font);
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-snippet-btn:hover { color: var(--green); background: rgba(58,193,74,0.06); border-color: rgba(58,193,74,0.15); }
+.sidebar-tip {
+  font-size: 10px;
+  color: rgba(255,255,255,0.18);
+  font-family: var(--mono);
+  padding: 3px 6px;
+  margin-bottom: 3px;
+  line-height: 1.5;
+}
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 4px 12px;
+}
+.sidebar-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulseDot 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulseDot {
+  0%,100% { box-shadow: 0 0 0 0 rgba(58,193,74,0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(58,193,74,0); }
+}
+
+/* ── EDITOR AREA ── */
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--editor-bg);
+}
+
+/* Toolbar */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--editor-panel);
+  border-bottom: 1px solid var(--editor-border);
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.btn-run {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 20px;
+  background: var(--green);
+  border: none;
+  border-radius: var(--radius);
+  color: var(--charcoal);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  box-shadow: var(--shadow-green);
+  transition: all 0.18s;
+}
+.btn-run:hover { background: var(--green-dk); transform: translateY(-1px); }
+.btn-run:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-run .spinner {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(26,29,35,0.3);
+  border-top-color: var(--charcoal);
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+.btn-clear {
+  padding: 7px 14px;
+  background: rgba(229,62,62,0.08);
+  border: 1px solid rgba(229,62,62,0.25);
+  border-radius: var(--radius);
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-clear:hover { background: rgba(229,62,62,0.15); }
+.toolbar-hint {
+  font-size: 10px;
+  color: var(--editor-dim);
+  font-family: var(--mono);
+  margin-left: auto;
+}
+.toolbar-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.toolbar-badge.ok { color: var(--editor-green); background: rgba(58,193,74,0.1); border: 1px solid rgba(58,193,74,0.25); }
+.toolbar-badge.err { color: #ff6b6b; background: rgba(229,62,62,0.1); border: 1px solid rgba(229,62,62,0.25); }
+
+/* Code Editor */
+.editor-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+.line-numbers {
+  width: 44px;
+  background: var(--editor-panel);
+  padding: 14px 0;
+  text-align: right;
+  color: rgba(139,148,158,0.4);
+  font-size: 12px;
+  font-family: var(--mono);
+  line-height: 1.7;
+  user-select: none;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+.line-numbers div { padding: 0 10px; }
+.code-textarea {
+  flex: 1;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+  border: none;
+  outline: none;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-family: var(--mono);
+  line-height: 1.7;
+  resize: none;
+  tab-size: 2;
+  caret-color: var(--green);
+}
+.code-textarea::selection { background: rgba(58,193,74,0.2); }
+
+/* Output Panel */
+.output-panel {
+  height: 230px;
+  background: var(--editor-panel);
+  border-top: 1px solid var(--editor-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.output-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.2);
+}
+.output-tab {
+  padding: 8px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.3);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.output-tab:hover { color: rgba(255,255,255,0.6); }
+.output-tab.active {
+  border-bottom-color: var(--green);
+  color: var(--green);
+}
+.output-tab-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+}
+.output-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+.out-line {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 1px 0;
+}
+.out-line.comment { color: rgba(139,148,158,0.5); font-style: italic; }
+.out-line.success { color: var(--editor-green); }
+.out-line.warn { color: var(--editor-gold); }
+.out-line.linenum { color: rgba(139,148,158,0.4); margin-right: 12px; user-select: none; }
+.error-box {
+  color: #ff6b6b;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 10px 14px;
+  background: rgba(229,62,62,0.07);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(229,62,62,0.2);
+  margin-bottom: 8px;
+}
+/* Table view */
+.catalog-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--mono);
+  width: 100%;
+}
+.catalog-table th {
+  padding: 4px 12px;
+  text-align: left;
+  color: var(--editor-cyan);
+  border-bottom: 1px solid rgba(121,192,255,0.2);
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+.catalog-table td {
+  padding: 3px 12px;
+  color: var(--editor-dim);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  white-space: nowrap;
+}
+.catalog-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.catalog-table tr:hover td { background: rgba(58,193,74,0.05); color: var(--editor-text); }
+.catalog-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--editor-gold);
+  margin-bottom: 8px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+if (!sessionStorage.getItem('szc_token')) window.location.href = 'index.html';
+const STUDENT_NAME = sessionStorage.getItem('szc_name') || 'Student';
+
+/* ─── MOCK DB ─────────────────────────────────────────────── */
+const MOCK_DB = {
+  I_Material: [
+    { Material:'MAT-001', MaterialName:'Laptop Pro 15',    MaterialType:'FERT', BaseUnit:'EA', GrossWeight:2.5,  CreationDate:'20240101', Plant:'1000', MaterialGroup:'ELE' },
+    { Material:'MAT-002', MaterialName:'Wireless Mouse',   MaterialType:'FERT', BaseUnit:'EA', GrossWeight:0.12, CreationDate:'20240201', Plant:'1000', MaterialGroup:'ELE' },
+    { Material:'MAT-003', MaterialName:'SAP Training Lic', MaterialType:'DIEN', BaseUnit:'EA', GrossWeight:0,    CreationDate:'20240301', Plant:'2000', MaterialGroup:'SRV' },
+    { Material:'MAT-004', MaterialName:'Steel Pipe DN50',  MaterialType:'ROH',  BaseUnit:'M',  GrossWeight:4.8,  CreationDate:'20231201', Plant:'1000', MaterialGroup:'MET' },
+    { Material:'MAT-005', MaterialName:'Office Chair Ergo',MaterialType:'FERT', BaseUnit:'EA', GrossWeight:15.0, CreationDate:'20240115', Plant:'3000', MaterialGroup:'FUR' },
+    { Material:'MAT-006', MaterialName:'USB-C Hub 7-Port', MaterialType:'FERT', BaseUnit:'EA', GrossWeight:0.18, CreationDate:'20240401', Plant:'1000', MaterialGroup:'ELE' },
+    { Material:'MAT-007', MaterialName:'Cooling Lubricant',MaterialType:'ROH',  BaseUnit:'L',  GrossWeight:1.0,  CreationDate:'20231115', Plant:'1000', MaterialGroup:'CHM' },
+  ],
+  I_SalesOrder: [
+    { SalesOrder:'0000001001', SalesOrderType:'TA', SoldToParty:'C001', SalesOrg:'1000', NetAmount:12500.00, Currency:'USD', CreationDate:'20240601', OrderStatus:'A' },
+    { SalesOrder:'0000001002', SalesOrderType:'TA', SoldToParty:'C002', SalesOrg:'1000', NetAmount:4800.50,  Currency:'EUR', CreationDate:'20240602', OrderStatus:'B' },
+    { SalesOrder:'0000001003', SalesOrderType:'RE', SoldToParty:'C001', SalesOrg:'2000', NetAmount:320.00,   Currency:'USD', CreationDate:'20240603', OrderStatus:'A' },
+    { SalesOrder:'0000001004', SalesOrderType:'TA', SoldToParty:'C003', SalesOrg:'1000', NetAmount:98000.00, Currency:'USD', CreationDate:'20240604', OrderStatus:'C' },
+    { SalesOrder:'0000001005', SalesOrderType:'TA', SoldToParty:'C004', SalesOrg:'3000', NetAmount:1250.75,  Currency:'GBP', CreationDate:'20240605', OrderStatus:'A' },
+    { SalesOrder:'0000001006', SalesOrderType:'KA', SoldToParty:'C002', SalesOrg:'1000', NetAmount:7640.00,  Currency:'EUR', CreationDate:'20240606', OrderStatus:'B' },
+  ],
+  I_BusinessPartner: [
+    { BusinessPartner:'C001', BusinessPartnerName:'Acme Corp',      Country:'DE', Region:'BY', Industry:'TECH', Currency:'EUR' },
+    { BusinessPartner:'C002', BusinessPartnerName:'Global IT GmbH', Country:'DE', Region:'HE', Industry:'TECH', Currency:'EUR' },
+    { BusinessPartner:'C003', BusinessPartnerName:'US Systems Inc', Country:'US', Region:'CA', Industry:'MFG',  Currency:'USD' },
+    { BusinessPartner:'C004', BusinessPartnerName:'UK Trading Ltd', Country:'GB', Region:'LN', Industry:'RET',  Currency:'GBP' },
+    { BusinessPartner:'V001', BusinessPartnerName:'SAP SE',         Country:'DE', Region:'BW', Industry:'TECH', Currency:'EUR' },
+  ],
+  I_PurchaseOrder: [
+    { PurchaseOrder:'4500001001', Supplier:'V001', CompanyCode:'1000', PurchaseOrderDate:'20240501', TotalNetOrderValue:45000.00, Currency:'EUR' },
+    { PurchaseOrder:'4500001002', Supplier:'V001', CompanyCode:'1000', PurchaseOrderDate:'20240510', TotalNetOrderValue:12300.00, Currency:'EUR' },
+    { PurchaseOrder:'4500001003', Supplier:'C003', CompanyCode:'2000', PurchaseOrderDate:'20240515', TotalNetOrderValue:8900.00,  Currency:'USD' },
+  ],
+  I_FunctionalLocation: [
+    { FunctionalLocation:'FL-PLANT-01', Description:'Main Plant Floor A', CostCenter:'CC1000', Plant:'1000' },
+    { FunctionalLocation:'FL-PLANT-02', Description:'Warehouse Zone B',   CostCenter:'CC1000', Plant:'1000' },
+  ],
+};
+
+/* ─── SNIPPETS ───────────────────────────────────────────── */
+const SNIPPETS = [
+  { label:'SELECT All Materials', code:`DATA lt_mat TYPE TABLE OF i_material.
+
+SELECT * FROM i_material
+  INTO TABLE @lt_mat
+  UP TO 5 ROWS.
+
+LOOP AT lt_mat INTO DATA(ls_mat).
+  WRITE: / ls_mat-material, ls_mat-materialname, ls_mat-materialtype.
+ENDLOOP.` },
+  { label:'WHERE Filter', code:`DATA lt_orders TYPE TABLE OF i_salesorder.
+
+SELECT *
+  FROM i_salesorder
+  INTO TABLE @lt_orders
+  WHERE salesorg = '1000'
+    AND currency = 'EUR'.
+
+IF sy-subrc = 0.
+  WRITE: / 'Found:', lines( lt_orders ), 'order(s)'.
+  LOOP AT lt_orders INTO DATA(ls_o).
+    WRITE: / ls_o-salesorder, ls_o-netamount, ls_o-currency.
+  ENDLOOP.
+ELSE.
+  WRITE: / 'No records found.'.
+ENDIF.` },
+  { label:'JOIN Sales + BP', code:`DATA lt_result TYPE TABLE OF i_salesorder.
+
+SELECT so~salesorder,
+       so~soldtoparty,
+       bp~businesspartnername,
+       so~netamount,
+       so~currency
+  FROM i_salesorder AS so
+  INNER JOIN i_businesspartner AS bp
+    ON so~soldtoparty = bp~businesspartner
+  INTO CORRESPONDING FIELDS OF TABLE @lt_result.
+
+LOOP AT lt_result INTO DATA(ls).
+  WRITE: / ls-salesorder, ls-soldtoparty, ls-netamount.
+ENDLOOP.` },
+  { label:'LOOP with IF/ELSE', code:`DATA lt_mat TYPE TABLE OF i_material.
+DATA lv_count TYPE i.
+
+SELECT * FROM i_material INTO TABLE @lt_mat.
+
+LOOP AT lt_mat INTO DATA(ls_mat).
+  IF ls_mat-materialtype = 'FERT'.
+    lv_count = lv_count + 1.
+    WRITE: / 'Finished Good:', ls_mat-materialname.
+  ELSEIF ls_mat-materialtype = 'ROH'.
+    WRITE: / 'Raw Material:', ls_mat-materialname.
+  ELSE.
+    WRITE: / 'Other:', ls_mat-materialname, '(', ls_mat-materialtype, ')'.
+  ENDIF.
+ENDLOOP.
+WRITE: / '---'.
+WRITE: / 'Total FERT items:', lv_count.` },
+  { label:'SORT Descending', code:`DATA lt_orders TYPE TABLE OF i_salesorder.
+DATA lt_sorted LIKE lt_orders.
+
+SELECT * FROM i_salesorder INTO TABLE @lt_orders.
+
+lt_sorted = lt_orders.
+SORT lt_sorted BY netamount DESCENDING.
+
+WRITE: / '=== Orders by Amount (Desc) ==='.
+LOOP AT lt_sorted INTO DATA(ls).
+  WRITE: / ls-salesorder, ls-netamount, ls-currency.
+ENDLOOP.` },
+  { label:'READ TABLE with Key', code:`DATA lt_bp TYPE TABLE OF i_businesspartner.
+DATA ls_bp TYPE i_businesspartner.
+
+SELECT * FROM i_businesspartner INTO TABLE @lt_bp.
+
+READ TABLE lt_bp INTO ls_bp
+  WITH KEY businesspartner = 'C002'.
+
+IF sy-subrc = 0.
+  WRITE: / 'Found:', ls_bp-businesspartnername.
+  WRITE: / 'Country:', ls_bp-country.
+  WRITE: / 'Currency:', ls_bp-currency.
+ELSE.
+  WRITE: / 'Business Partner not found!'.
+ENDIF.` },
+];
+
+/* ─── ABAP INTERPRETER ───────────────────────────────────── */
+function executeABAP(code) {
+  const vars = {};
+  const tables = {};
+  let output = [];
+  let error = null;
+  try {
+    // SELECT
+    const selectRx = /SELECT\s+([\s\S]+?)\s+FROM\s+(\w+)([\s\S]*?)(?:INTO\s+(?:TABLE\s+@?(\w+)|CORRESPONDING\s+FIELDS\s+OF\s+TABLE\s+@?(\w+)|@?(\w+)))([\s\S]*?)(?=\n\s*\n|\nDATA|\nLOOP|\nIF|\nWRITE|\nREAD|\nSORT|\z)/gi;
+    let m;
+    while ((m = selectRx.exec(code)) !== null) {
+      const fromTable = m[2].trim();
+      const rest = m[3] + (m[7] || '');
+      const intoTable = m[4] || m[5] || m[6];
+      const dbKey = Object.keys(MOCK_DB).find(k => k.toLowerCase() === fromTable.toLowerCase());
+      if (!dbKey) { output.push(`⚠️ Table '${fromTable}' not found. Available: ${Object.keys(MOCK_DB).join(', ')}`); continue; }
+      let data = [...MOCK_DB[dbKey]];
+
+      const upTo = rest.match(/UP\s+TO\s+(\d+)\s+ROWS/i);
+      if (upTo) data = data.slice(0, parseInt(upTo[1]));
+
+      const where = rest.match(/WHERE\s+([\s\S]+?)(?=INTO|UP TO|ORDER|$)/i);
+      if (where) {
+        where[1].split(/\s+AND\s+/i).forEach(cond => {
+          const cm = cond.match(/(\w+)\s*=\s*'([^']+)'/i);
+          if (cm) {
+            const [, f, v] = cm;
+            data = data.filter(row => {
+              const k = Object.keys(row).find(k => k.toLowerCase() === f.toLowerCase());
+              return k && String(row[k]).trim().toLowerCase() === v.toLowerCase();
+            });
+          }
+        });
+      }
+
+      const joinM = code.match(/(?:INNER|LEFT)\s+JOIN\s+(\w+)\s+AS\s+\w+\s+ON\s+\w+~(\w+)\s*=\s+\w+~(\w+)/i);
+      if (joinM) {
+        const jKey = Object.keys(MOCK_DB).find(k => k.toLowerCase() === joinM[1].toLowerCase());
+        if (jKey) {
+          const lf = joinM[2], rf = joinM[3];
+          const joined = [];
+          data.forEach(row => {
+            const lv = Object.entries(row).find(([k]) => k.toLowerCase() === lf.toLowerCase())?.[1];
+            const partner = MOCK_DB[jKey].find(r2 => {
+              const rv = Object.entries(r2).find(([k]) => k.toLowerCase() === rf.toLowerCase())?.[1];
+              return rv === lv;
+            });
+            if (partner) joined.push({ ...row, ...partner });
+          });
+          data = joined;
+        }
+      }
+
+      if (intoTable) {
+        const tk = intoTable.toUpperCase().replace('@', '');
+        tables[tk] = data;
+        vars['SY-SUBRC'] = data.length > 0 ? 0 : 4;
+        vars['SY-DBCNT'] = data.length;
+      }
+    }
+
+    // LOOP
+    const loopRx = /LOOP\s+AT\s+(\w+)\s+INTO\s+(?:DATA\((\w+)\)|(\w+))\.([\s\S]*?)ENDLOOP\./gi;
+    for (const lm of [...code.matchAll(loopRx)]) {
+      const tName = lm[1].toUpperCase();
+      const rowVar = (lm[2] || lm[3]).toUpperCase();
+      const body = lm[4];
+      (tables[tName] || []).forEach(row => {
+        vars[rowVar] = row;
+        for (const wm of [...body.matchAll(/WRITE\s*:\s*\/?(.+?)\.?\s*$/gim)]) {
+          output.push(resolveWriteParts(wm[1], vars));
+        }
+        for (const ib of [...body.matchAll(/IF\s+(.+?)\.\s*([\s\S]*?)(?:ELSEIF\s+(.+?)\.\s*([\s\S]*?))?(?:ELSE\.\s*([\s\S]*?))?ENDIF\./gi)]) {
+          const branch = evalCondition(ib[1], vars) ? ib[2] : (ib[3] && evalCondition(ib[3], vars)) ? ib[4] : (ib[5] || '');
+          for (const wm of [...branch.matchAll(/WRITE\s*:\s*\/?(.+?)\.?\s*$/gim)]) {
+            output.push(resolveWriteParts(wm[1], vars));
+          }
+        }
+      });
+    }
+
+    // Top-level WRITEs (no LOOP)
+    if (!code.match(/LOOP/i)) {
+      for (const wm of [...code.matchAll(/^WRITE\s*:\s*\/?(.+?)\.?\s*$/gim)]) {
+        output.push(resolveWriteParts(wm[1], vars));
+      }
+    }
+
+    // READ TABLE
+    const readM = code.match(/READ\s+TABLE\s+(\w+)\s+INTO\s+(?:DATA\((\w+)\)|(\w+))\s+WITH\s+KEY\s+(\w+)\s*=\s*'([^']+)'/i);
+    if (readM) {
+      const tk = readM[1].toUpperCase(), rv = (readM[2] || readM[3]).toUpperCase();
+      const kf = readM[4], kv = readM[5];
+      const found = (tables[tk] || []).find(r => {
+        const fk = Object.keys(r).find(k => k.toLowerCase() === kf.toLowerCase());
+        return fk && String(r[fk]).trim().toLowerCase() === kv.toLowerCase();
+      });
+      vars['SY-SUBRC'] = found ? 0 : 4;
+      if (found) vars[rv] = found;
+    }
+
+    // SORT
+    const sortM = code.match(/SORT\s+(\w+)\s+BY\s+(\w+)(?:\s+(ASCENDING|DESCENDING))?/i);
+    if (sortM) {
+      const tk = sortM[1].toUpperCase(), field = sortM[2].toLowerCase();
+      const desc = (sortM[3] || '').toUpperCase() === 'DESCENDING';
+      const src = tables[tk] || [];
+      tables[tk] = [...src].sort((a, b) => {
+        const k = Object.keys(a).find(k => k.toLowerCase() === field);
+        if (!k) return 0;
+        return desc ? (b[k] > a[k] ? 1 : -1) : (a[k] > b[k] ? 1 : -1);
+      });
+    }
+
+    // sy-subrc IF block
+    const syIf = code.match(/IF\s+sy-subrc\s*=\s*0\.([\s\S]*?)(?:ELSE\.([\s\S]*?))?ENDIF\./i);
+    if (syIf) {
+      const branch = vars['SY-SUBRC'] === 0 ? syIf[1] : (syIf[2] || '');
+      for (const wm of [...branch.matchAll(/WRITE\s*:\s*\/?(.+?)\.?\s*$/gim)]) {
+        output.push(resolveWriteParts(wm[1], vars));
+      }
+    }
+
+    if (output.length === 0 && Object.keys(tables).length === 0) {
+      output.push('// Run your code — output appears here');
+    }
+  } catch (e) {
+    error = 'Runtime Error: ' + e.message;
+  }
+  return { output, error, tables };
+}
+
+function resolveVal(token, vars) {
+  const t = token.replace(/^\s+|\s+$/g, '');
+  if (t.startsWith("'") && t.endsWith("'")) return t.slice(1, -1);
+  const m = t.match(/lines\s*\(\s*(\w+)\s*\)/i);
+  if (m) return String((vars[m[1].toUpperCase()] || []).length);
+  const parts = t.split('-');
+  if (parts.length === 2) {
+    const ro = vars[parts[0].toUpperCase()];
+    if (ro && typeof ro === 'object') {
+      const fk = Object.keys(ro).find(k => k.toLowerCase() === parts[1].toLowerCase());
+      return fk ? String(ro[fk]) : t;
+    }
+  }
+  const v = vars[t.toUpperCase()];
+  return v !== undefined ? String(v) : t;
+}
+
+function resolveWriteParts(raw, vars) {
+  return raw.split(',').map(p => resolveVal(p.trim().replace(/^\/\s*/, ''), vars)).filter(Boolean).join(' ');
+}
+
+function evalCondition(cond, vars) {
+  const m = cond.match(/(\w+)-(\w+)\s*=\s*'([^']+)'/i);
+  if (!m) return false;
+  const ro = vars[m[1].toUpperCase()];
+  if (!ro || typeof ro !== 'object') return false;
+  const fk = Object.keys(ro).find(k => k.toLowerCase() === m[2].toLowerCase());
+  return fk && String(ro[fk]).trim().toLowerCase() === m[3].toLowerCase();
+}
+
+/* ─── APP ────────────────────────────────────────────────── */
+function App() {
+  const [code, setCode] = useState(SNIPPETS[0].code);
+  const [output, setOutput] = useState([]);
+  const [tables, setTables] = useState({});
+  const [error, setError] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [activeTab, setActiveTab] = useState('output');
+  const [activeCatalog, setActiveCatalog] = useState('I_Material');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [lineCount, setLineCount] = useState(SNIPPETS[0].code.split('\n').length);
+  const textareaRef = useRef(null);
+
+  useEffect(() => setLineCount(code.split('\n').length), [code]);
+
+  const run = useCallback(() => {
+    setRunning(true);
+    setError(null);
+    setTimeout(() => {
+      const r = executeABAP(code);
+      setOutput(r.output);
+      setTables(r.tables);
+      setError(r.error);
+      setActiveTab('output');
+      setRunning(false);
+    }, 550);
+  }, [code]);
+
+  const clear = () => { setOutput([]); setTables({}); setError(null); };
+
+  const handleKey = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = e.target.selectionStart, en = e.target.selectionEnd;
+      const nv = code.substring(0, s) + '  ' + code.substring(en);
+      setCode(nv);
+      setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = s + 2; }, 0);
+    }
+  };
+
+  const applySnippet = (sn) => { setCode(sn.code); clear(); };
+
+  const outputBadge = error
+    ? <span className="toolbar-badge err">⚠ Error</span>
+    : output.length > 0 ? <span className="toolbar-badge ok">✓ {output.length} line(s)</span> : null;
+
+  return (
+    <>
+      {/* TOPBAR */}
+      <div className="topbar">
+        <button className="topbar-hamburger" onClick={() => setSidebarOpen(v => !v)}>☰</button>
+        <span className="topbar-logo">SAPZ<span>CODES</span></span>
+        <span className="topbar-sep">/</span>
+        <span className="topbar-page">ABAP Executor</span>
+        <div className="topbar-right">
+          <span className="topbar-user">👤 {STUDENT_NAME}</span>
+          <a className="topbar-btn" href="games.html">🎮 Games</a>
+          <a className="topbar-btn danger" href="index.html" onClick={() => sessionStorage.clear()}>Sign Out</a>
+        </div>
+      </div>
+
+      <div className="app-body">
+        {/* SIDEBAR */}
+        <div className={`sidebar${sidebarOpen ? '' : ' collapsed'}`}>
+          {/* Data Catalog */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">
+              <div className="sidebar-status-dot"/>
+              Data Catalog
+            </div>
+            {Object.keys(MOCK_DB).map(t => (
+              <button key={t} className={`sidebar-btn${activeCatalog === t ? ' active' : ''}`}
+                onClick={() => { setActiveCatalog(t); setActiveTab('catalog'); }}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-divider"/>
+          {/* Snippets */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">⚡ Quick Snippets</div>
+            {SNIPPETS.map((sn, i) => (
+              <button key={i} className="sidebar-snippet-btn" onClick={() => applySnippet(sn)}>
+                → {sn.label}
+              </button>
+            ))}
+          </div>
+          <div className="sidebar-divider"/>
+          {/* Tips */}
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">💡 Tips</div>
+            {['Ctrl+Enter → Run', 'Tab → 2-space indent', 'WRITE: / → new line', 'sy-subrc = 0 → success'].map((t, i) => (
+              <div key={i} className="sidebar-tip">{t}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* EDITOR */}
+        <div className="editor-area">
+          <div className="editor-toolbar">
+            <button className="btn-run" onClick={run} disabled={running}>
+              {running ? <><div className="spinner"/>Running...</> : <>▶ Run</>}
+            </button>
+            <button className="btn-clear" onClick={clear}>✕ Clear</button>
+            {outputBadge}
+            <span className="toolbar-hint">Ctrl+Enter to run</span>
+          </div>
+
+          <div className="editor-body">
+            <div className="line-numbers">
+              {Array.from({ length: lineCount }, (_, i) => (
+                <div key={i}>{i + 1}</div>
+              ))}
+            </div>
+            <textarea
+              ref={textareaRef}
+              className="code-textarea"
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              onKeyDown={handleKey}
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              placeholder="Write your ABAP code here..."
+            />
+          </div>
+
+          <div className="output-panel">
+            <div className="output-tabs">
+              {[['output','📋 Output'],['catalog','📦 Catalog'],['tables','🗂 Variables']].map(([id, label]) => (
+                <button key={id} className={`output-tab${activeTab === id ? ' active' : ''}`} onClick={() => setActiveTab(id)}>
+                  {label}
+                </button>
+              ))}
+              <div className="output-tab-right">{outputBadge}</div>
+            </div>
+
+            <div className="output-body">
+              {activeTab === 'output' && (
+                <>
+                  {error && <div className="error-box">{error}</div>}
+                  {output.length === 0 && !error && (
+                    <div className="out-line comment">// Run your code — output appears here</div>
+                  )}
+                  {output.map((line, i) => (
+                    <div key={i} className={`out-line${line.startsWith('//') ? ' comment' : line.startsWith('⚠️') ? ' warn' : ' success'}`}>
+                      {!line.startsWith('//') && <span className="linenum">{String(i + 1).padStart(2, '0')}</span>}
+                      {line}
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {activeTab === 'catalog' && MOCK_DB[activeCatalog] && (
+                <>
+                  <div className="catalog-label">VIEW: {activeCatalog} · {MOCK_DB[activeCatalog].length} rows</div>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="catalog-table">
+                      <thead>
+                        <tr>{Object.keys(MOCK_DB[activeCatalog][0]).map(k => <th key={k}>{k}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {MOCK_DB[activeCatalog].map((row, i) => (
+                          <tr key={i}>{Object.values(row).map((v, j) => <td key={j}>{String(v)}</td>)}</tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'tables' && (
+                <>
+                  {Object.keys(tables).length === 0 && (
+                    <div className="out-line comment">// Internal tables appear here after execution</div>
+                  )}
+                  {Object.entries(tables).map(([name, data]) => (
+                    <div key={name} style={{marginBottom:20}}>
+                      <div className="catalog-label">{name} — {data.length} row(s)</div>
+                      <div style={{overflowX:'auto'}}>
+                        <table className="catalog-table">
+                          <thead>
+                            <tr>{data.length > 0 && Object.keys(data[0]).map(k => <th key={k}>{k}</th>)}</tr>
+                          </thead>
+                          <tbody>
+                            {data.slice(0, 20).map((row, i) => (
+                              <tr key={i}>{Object.values(row).map((v, j) => <td key={j}>{String(v)}</td>)}</tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
