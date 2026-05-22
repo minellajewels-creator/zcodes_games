@@ -604,7 +604,7 @@ async function submitRequest() {
   const btn = document.getElementById('btn-request');
   btn.classList.add('loading'); btn.disabled = true;
   try {
-    const res  = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'request',name,email,batch,level,reason}) });
+    const res  = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action:'request',name,email,batch,level,reason}) });
     const data = await res.json();
     if (data.status === 'ok') {
       showMsg('msg-request','✅ Request submitted! HR will review and email you within 24–48 hrs.','success');
@@ -628,7 +628,7 @@ async function enterPlatform() {
   const btn = document.getElementById('btn-enter');
   btn.classList.add('loading'); btn.disabled = true;
   try {
-    const res  = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'verify',email,token}) });
+    const res  = await fetch(GAS_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action:'verify',email,token}) });
     const data = await res.json();
     if (data.status === 'ok') {
       showMsg('msg-enter','✅ Access granted! Redirecting...','success');
