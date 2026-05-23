@@ -316,6 +316,48 @@ html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font
 .cert-btn-cl { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 .cert-btn-cl:hover { background: var(--surface); }
 
+/* ── LOADING SCREEN ─────────────────────────────────────────── */
+#loading-screen {
+  background: radial-gradient(ellipse at 50% 30%, rgba(58,193,74,0.07) 0%, transparent 60%), var(--bg);
+  flex-direction: column; gap: 0;
+}
+.loading-brand {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.25em;
+  text-transform: uppercase; color: var(--green); margin-bottom: 28px;
+  display: flex; align-items: center; gap: 10px;
+}
+.loading-brand::before,.loading-brand::after { content:''; height:1px; width:36px; background:var(--green); opacity:0.4; }
+.loading-title { font-size: 28px; font-weight: 800; letter-spacing:-0.5px; margin-bottom:8px; text-align:center; }
+.loading-title span { color: var(--green); }
+.loading-sub { font-size:13px; color:var(--text2); margin-bottom:36px; text-align:center; }
+.loading-bar-wrap {
+  width: 320px; max-width: 90vw;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; height: 6px; overflow: hidden; margin-bottom: 14px;
+}
+.loading-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--green), #58a6ff);
+  border-radius: 20px; width: 0%; transition: width 0.4s ease;
+}
+.loading-status { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.05em; min-height:18px; text-align:center; }
+.loading-err {
+  margin-top:20px; padding:12px 20px;
+  background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.25);
+  border-radius:10px; color:var(--danger); font-size:13px; text-align:center;
+  display:none; max-width:360px;
+}
+.loading-err.show { display:block; }
+.loading-retry {
+  margin-top:14px; padding:9px 24px; border-radius:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--text); font-family:var(--font); font-size:13px;
+  font-weight:600; cursor:pointer; display:none; transition:all 0.18s;
+}
+.loading-retry.show { display:inline-block; }
+.loading-retry:hover { border-color:var(--green); color:var(--green); }
+.loading-fallback { margin-top:10px; font-size:11px; color:var(--muted); cursor:pointer; text-decoration:underline; display:none; }
+.loading-fallback.show { display:block; }
+
 /* ── MOBILE CONTROLS ─────────────────────────────────────────── */
 #mobile-controls {
   position: fixed; bottom: 20px; left: 0; right: 0;
@@ -335,8 +377,20 @@ html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font
 </head>
 <body>
 
+<!-- ── LOADING SCREEN ───────────────────────────────────────── -->
+<div class="screen" id="loading-screen">
+  <div class="loading-brand">SAPZCODES</div>
+  <h2 class="loading-title">Loading <span>ABAP Runner</span></h2>
+  <p class="loading-sub">Fetching questions from the training database…</p>
+  <div class="loading-bar-wrap"><div class="loading-bar-fill" id="load-bar"></div></div>
+  <div class="loading-status" id="load-status">Connecting to question bank…</div>
+  <div class="loading-err" id="load-err">Could not load questions. Check your Apps Script URL or internet connection.</div>
+  <button class="loading-retry" id="load-retry" onclick="fetchQuestions()">↩ Retry</button>
+  <div class="loading-fallback" id="load-fallback" onclick="useFallback()">▸ Play with built-in demo questions</div>
+</div>
+
 <!-- ── START SCREEN ──────────────────────────────────────────── -->
-<div class="screen" id="start-screen">
+<div class="screen hidden" id="start-screen">
   <div class="start-logo">SAPZCODES</div>
   <h1 class="start-title">ABAP <span>Runner</span></h1>
   <p class="start-sub">Fill in the blanks of ABAP syntax to keep your developer running. Complete all levels to earn your certificate.</p>
@@ -428,139 +482,176 @@ html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   ABAP QUESTION BANK  (hardcoded Phase 1 — replace with Sheets)
+   CONFIG — paste your Apps Script URL here
 ══════════════════════════════════════════════════════════════ */
-const QUESTIONS = [
-  {
-    tag: "DATA Declaration",
-    template: [
-      { t:"kw", v:"DATA" }, { t:"op", v:" " },
-      { t:"var", v:"lv_name" }, { t:"op", v:" " },
-      { t:"kw", v:"TYPE" }, { t:"op", v:" " },
-      { t:"blank" },
-      { t:"op", v:"." }
-    ],
-    options: ["STRING", "INTEGER", "BOOLEAN", "FLOAT"],
-    answer: "STRING",
-    hint: "Standard ABAP type for character strings"
-  },
-  {
-    tag: "Loop Construct",
-    template: [
-      { t:"kw", v:"LOOP AT" }, { t:"op", v:" " },
-      { t:"var", v:"lt_data" }, { t:"op", v:" " },
-      { t:"kw", v:"INTO" }, { t:"op", v:" " },
-      { t:"var", v:"ls_data" }, { t:"op", v:"." },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"blank" },
-      { t:"br" },
-      { t:"kw", v:"ENDLOOP." }
-    ],
-    options: ["WRITE ls_data.", "LOOP ls_data.", "SELECT ls_data.", "MOVE ls_data."],
-    answer: "WRITE ls_data.",
-    hint: "Display a record inside a loop"
-  },
-  {
-    tag: "SELECT Query",
-    template: [
-      { t:"kw", v:"SELECT" }, { t:"op", v:" " },
-      { t:"blank" },
-      { t:"op", v:" " }, { t:"kw", v:"FROM" }, { t:"op", v:" " },
-      { t:"var", v:"mara" },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"kw", v:"INTO TABLE" }, { t:"op", v:" " },
-      { t:"var", v:"lt_mara" },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"kw", v:"WHERE" }, { t:"op", v:" " },
-      { t:"var", v:"matnr" }, { t:"op", v:" = " }, { t:"var", v:"lv_mat" }, { t:"op", v:"." }
-    ],
-    options: ["*", "SINGLE *", "COUNT(*)", "MAX(matnr)"],
-    answer: "*",
-    hint: "Select all fields from the table"
-  },
-  {
-    tag: "IF Condition",
-    template: [
-      { t:"kw", v:"IF" }, { t:"op", v:" " },
-      { t:"var", v:"lv_count" }, { t:"op", v:" " },
-      { t:"blank" },
-      { t:"op", v:" 0." },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"kw", v:"WRITE" }, { t:"op", v:" " },
-      { t:"str", v:"'No records found'." },
-      { t:"br" },
-      { t:"kw", v:"ENDIF." }
-    ],
-    options: ["EQ", "IS INITIAL", "= 0", "GE"],
-    answer: "IS INITIAL",
-    hint: "Check if a variable holds its initial/default value"
-  },
-  {
-    tag: "String Operations",
-    template: [
-      { t:"blank" },
-      { t:"op", v:" lv_result = lv_first" },
-      { t:"op", v:" && " },
-      { t:"var", v:"lv_second" }, { t:"op", v:"." }
-    ],
-    options: ["CONCATENATE", "lv_result =", "STRING", "APPEND"],
-    answer: "lv_result =",
-    hint: "Inline string concatenation assignment in modern ABAP"
-  },
-  {
-    tag: "FORM Routine",
-    template: [
-      { t:"kw", v:"FORM" }, { t:"op", v:" " },
-      { t:"var", v:"calculate_total" }, { t:"op", v:" " },
-      { t:"blank" },
-      { t:"op", v:" lv_amount " }, { t:"kw", v:"TYPE" }, { t:"op", v:" i." },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"cm", v:"* Logic here" },
-      { t:"br" },
-      { t:"kw", v:"ENDFORM." }
-    ],
-    options: ["USING", "IMPORTING", "RETURNING", "CHANGING"],
-    answer: "USING",
-    hint: "Pass parameters into a FORM subroutine"
-  },
-  {
-    tag: "Function Module",
-    template: [
-      { t:"kw", v:"CALL FUNCTION" }, { t:"op", v:" " },
-      { t:"str", v:"'POPUP_TO_CONFIRM'" },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"kw", v:"EXPORTING" },
-      { t:"br" },
-      { t:"sp", v:"    " }, { t:"var", v:"titlebar" }, { t:"op", v:" = " },
-      { t:"str", v:"'Confirm'" },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"blank" },
-      { t:"br" },
-      { t:"sp", v:"    " }, { t:"var", v:"answer" }, { t:"op", v:" = " }, { t:"var", v:"lv_ans." }
-    ],
-    options: ["IMPORTING", "EXPORTING", "TABLES", "EXCEPTIONS"],
-    answer: "IMPORTING",
-    hint: "Receive output parameters from a function module"
-  },
-  {
-    tag: "Class Method",
-    template: [
-      { t:"kw", v:"METHOD" }, { t:"op", v:" " },
-      { t:"var", v:"get_data." },
-      { t:"br" },
-      { t:"sp", v:"  " }, { t:"kw", v:"SELECT" }, { t:"op", v:" * " },
-      { t:"kw", v:"FROM" }, { t:"op", v:" " },
-      { t:"var", v:"vbak" }, { t:"op", v:" " },
-      { t:"kw", v:"INTO TABLE" }, { t:"op", v:" " },
-      { t:"blank" }, { t:"op", v:"." },
-      { t:"br" },
-      { t:"kw", v:"ENDMETHOD." }
-    ],
-    options: ["me->mt_orders", "lt_orders", "rt_orders", "ct_orders"],
-    answer: "me->mt_orders",
-    hint: "Reference an instance attribute inside a method"
-  }
+const CONFIG = {
+  // Your deployed Apps Script Web App URL
+  // Sheet columns: tag | snippet | blank_word | option_a | option_b | option_c | option_d | answer | hint
+  SHEET_URL: '',  // ← paste here e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+  ACTION_QUESTIONS: 'getQuestions',
+  ACTION_LOG:       'logResult',
+  TIMER_SECS: 15,
+  LIVES: 3,
+};
+
+/* ── FALLBACK BUILT-IN QUESTIONS ─────────────────────────────── */
+const FALLBACK_QUESTIONS = [
+  { tag:"DATA Declaration",
+    template:[{t:"kw",v:"DATA"},{t:"op",v:" "},{t:"var",v:"lv_name"},{t:"op",v:" "},{t:"kw",v:"TYPE"},{t:"op",v:" "},{t:"blank"},{t:"op",v:"."}],
+    options:["STRING","INTEGER","BOOLEAN","FLOAT"], answer:"STRING", hint:"Standard ABAP type for character strings" },
+  { tag:"Loop Construct",
+    template:[{t:"kw",v:"LOOP AT"},{t:"op",v:" "},{t:"var",v:"lt_data"},{t:"op",v:" "},{t:"kw",v:"INTO"},{t:"op",v:" "},{t:"var",v:"ls_data"},{t:"op",v:"."},{t:"br"},{t:"sp",v:"  "},{t:"blank"},{t:"br"},{t:"kw",v:"ENDLOOP."}],
+    options:["WRITE ls_data.","LOOP ls_data.","SELECT ls_data.","MOVE ls_data."], answer:"WRITE ls_data.", hint:"Display a record inside a loop" },
+  { tag:"SELECT Query",
+    template:[{t:"kw",v:"SELECT"},{t:"op",v:" "},{t:"blank"},{t:"op",v:" "},{t:"kw",v:"FROM"},{t:"op",v:" "},{t:"var",v:"mara"},{t:"br"},{t:"sp",v:"  "},{t:"kw",v:"INTO TABLE"},{t:"op",v:" "},{t:"var",v:"lt_mara"},{t:"op",v:"."}],
+    options:["*","SINGLE *","COUNT(*)","MAX(matnr)"], answer:"*", hint:"Select all fields from the table" },
+  { tag:"IF Condition",
+    template:[{t:"kw",v:"IF"},{t:"op",v:" "},{t:"var",v:"lv_count"},{t:"op",v:" "},{t:"blank"},{t:"op",v:"."},{t:"br"},{t:"sp",v:"  "},{t:"kw",v:"WRITE"},{t:"op",v:" "},{t:"str",v:"'No records'."},{t:"br"},{t:"kw",v:"ENDIF."}],
+    options:["EQ","IS INITIAL","= 0","GE"], answer:"IS INITIAL", hint:"Check if a variable holds its initial value" },
+  { tag:"FORM Routine",
+    template:[{t:"kw",v:"FORM"},{t:"op",v:" "},{t:"var",v:"calc_total"},{t:"op",v:" "},{t:"blank"},{t:"op",v:" lv_amount "},{t:"kw",v:"TYPE"},{t:"op",v:" i."},{t:"br"},{t:"sp",v:"  "},{t:"cm",v:"* logic"},{t:"br"},{t:"kw",v:"ENDFORM."}],
+    options:["USING","IMPORTING","RETURNING","CHANGING"], answer:"USING", hint:"Pass parameters into a FORM" },
+  { tag:"Function Module",
+    template:[{t:"kw",v:"CALL FUNCTION"},{t:"op",v:" "},{t:"str",v:"'POPUP_TO_CONFIRM'"},{t:"br"},{t:"sp",v:"  "},{t:"kw",v:"EXPORTING"},{t:"br"},{t:"sp",v:"    "},{t:"var",v:"titlebar"},{t:"op",v:" = "},{t:"str",v:"'Confirm'"},{t:"br"},{t:"sp",v:"  "},{t:"blank"},{t:"br"},{t:"sp",v:"    "},{t:"var",v:"answer"},{t:"op",v:" = "},{t:"var",v:"lv_ans."}],
+    options:["IMPORTING","EXPORTING","TABLES","EXCEPTIONS"], answer:"IMPORTING", hint:"Receive output from a function module" },
+  { tag:"Class Method",
+    template:[{t:"kw",v:"METHOD"},{t:"op",v:" "},{t:"var",v:"get_data."},{t:"br"},{t:"sp",v:"  "},{t:"kw",v:"SELECT"},{t:"op",v:" * "},{t:"kw",v:"FROM"},{t:"op",v:" "},{t:"var",v:"vbak"},{t:"op",v:" "},{t:"kw",v:"INTO TABLE"},{t:"op",v:" "},{t:"blank"},{t:"op",v:"."},{t:"br"},{t:"kw",v:"ENDMETHOD."}],
+    options:["me->mt_orders","lt_orders","rt_orders","ct_orders"], answer:"me->mt_orders", hint:"Reference an instance attribute inside a method" },
+  { tag:"String Concat",
+    template:[{t:"var",v:"lv_result"},{t:"op",v:" = lv_a "},{t:"blank"},{t:"op",v:" lv_b."}],
+    options:["&&","||","++","::"], answer:"&&", hint:"Modern ABAP inline string concatenation operator" },
 ];
+
+/* ── RUNTIME QUESTIONS (filled by fetch or fallback) ─────────── */
+let QUESTIONS = [];
+
+/* ══════════════════════════════════════════════════════════════
+   SHEETS FETCH ENGINE
+══════════════════════════════════════════════════════════════ */
+function setLoadBar(pct, msg) {
+  document.getElementById('load-bar').style.width = pct + '%';
+  document.getElementById('load-status').textContent = msg;
+}
+
+function showLoadError(msg) {
+  const err = document.getElementById('load-err');
+  err.textContent = msg; err.classList.add('show');
+  document.getElementById('load-retry').classList.add('show');
+  document.getElementById('load-fallback').classList.add('show');
+}
+
+function hideLoadError() {
+  document.getElementById('load-err').classList.remove('show');
+  document.getElementById('load-retry').classList.remove('show');
+  document.getElementById('load-fallback').classList.remove('show');
+}
+
+/* Parse a flat snippet string into template parts
+   Format: "DATA [BLANK] TYPE [STRING]." where [BLANK] marks the gap
+   and [STRING] is placed before it as surrounding context.
+   Simple mode: entire snippet shown, blank auto-inserted. */
+function parseSnippet(snippet, blankWord) {
+  if (!snippet) return [{ t:'op', v: blankWord || '???' }];
+  const parts = [];
+  const lines = snippet.split('\\n');
+  lines.forEach((line, li) => {
+    if (li > 0) parts.push({ t:'br' });
+    // Replace __BLANK__ marker with blank token
+    const segs = line.split('__BLANK__');
+    segs.forEach((seg, si) => {
+      if (si > 0) parts.push({ t:'blank' });
+      if (!seg) return;
+      // Simple tokenizer: keywords green-red, vars orange, strings blue
+      const KEYWORDS = /\b(DATA|TYPE|SELECT|FROM|WHERE|INTO|TABLE|LOOP AT|LOOP|ENDLOOP|IF|ENDIF|FORM|ENDFORM|CALL FUNCTION|EXPORTING|IMPORTING|TABLES|EXCEPTIONS|METHOD|ENDMETHOD|CLASS|ENDCLASS|WRITE|MOVE|CLEAR|SORT|READ TABLE|MODIFY|INSERT|DELETE|APPEND|COLLECT|AT|ENDAT|DO|ENDDO|WHILE|ENDWHILE|CASE|ENDCASE|WHEN|TRY|CATCH|ENDTRY|RAISE|CREATE OBJECT|SET HANDLER|ASSIGN|FIELD-SYMBOLS|UNASSIGN|DESCRIBE|FIND|REPLACE|SPLIT|CONCATENATE|CONDENSE|TRANSLATE|SHIFT|OVERLAY|CONVERT|MESSAGE|CHECK|EXIT|CONTINUE|RETURN|PERFORM|INCLUDE)\b/g;
+      let last = 0, m;
+      KEYWORDS.lastIndex = 0;
+      while ((m = KEYWORDS.exec(seg)) !== null) {
+        if (m.index > last) parts.push({ t:'op', v: seg.slice(last, m.index) });
+        parts.push({ t:'kw', v: m[0] });
+        last = KEYWORDS.lastIndex;
+      }
+      if (last < seg.length) parts.push({ t:'op', v: seg.slice(last) });
+    });
+  });
+  // If no __BLANK__ found, put blank at end
+  if (!snippet.includes('__BLANK__')) {
+    parts.push({ t:'op', v:' ' }, { t:'blank' });
+  }
+  return parts;
+}
+
+function rowToQuestion(row) {
+  // row: [tag, snippet, blank_word, optA, optB, optC, optD, answer, hint]
+  const [tag, snippet, blankWord, optA, optB, optC, optD, answer, hint] = row;
+  const opts = [optA, optB, optC, optD].filter(Boolean);
+  return {
+    tag: tag || 'ABAP Syntax',
+    template: parseSnippet(snippet || '__BLANK__', blankWord),
+    options: opts.length >= 2 ? opts : ['A','B','C','D'],
+    answer: answer || optA,
+    hint: hint || '',
+  };
+}
+
+async function fetchQuestions() {
+  hideLoadError();
+  setLoadBar(10, 'Connecting to question bank…');
+
+  // No URL configured → use fallback silently
+  if (!CONFIG.SHEET_URL) {
+    setLoadBar(60, 'No Sheets URL configured — loading built-in questions…');
+    await delay(600);
+    useFallback();
+    return;
+  }
+
+  try {
+    setLoadBar(30, 'Sending request to Apps Script…');
+    const params = new URLSearchParams({ action: CONFIG.ACTION_QUESTIONS });
+    const res = await fetch(`${CONFIG.SHEET_URL}?${params}`, { redirect: 'follow' });
+    setLoadBar(65, 'Parsing response…');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Apps Script returned error');
+    const rows = json.data; // array of arrays
+    if (!rows || rows.length < 1) throw new Error('No questions found in sheet');
+    QUESTIONS = rows.map(rowToQuestion);
+    setLoadBar(100, `✓ Loaded ${QUESTIONS.length} questions!`);
+    await delay(700);
+    showStartScreen();
+  } catch (err) {
+    setLoadBar(30, '');
+    showLoadError(`Failed to load: ${err.message}`);
+  }
+}
+
+function useFallback() {
+  hideLoadError();
+  QUESTIONS = FALLBACK_QUESTIONS;
+  setLoadBar(100, `✓ Loaded ${QUESTIONS.length} built-in demo questions`);
+  delay(600).then(showStartScreen);
+}
+
+function showStartScreen() {
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* Log result to Sheets after game ends */
+async function logResult(name, score, correct, total, won) {
+  if (!CONFIG.SHEET_URL) return;
+  try {
+    const params = new URLSearchParams({
+      action: CONFIG.ACTION_LOG,
+      name, score, correct, total,
+      won: won ? '1' : '0',
+      date: new Date().toISOString(),
+    });
+    await fetch(`${CONFIG.SHEET_URL}?${params}`, { redirect: 'follow' });
+  } catch(_) { /* silent fail — don't block game */ }
+}
 
 /* ══════════════════════════════════════════════════════════════
    GAME STATE
@@ -1187,8 +1278,9 @@ function updateLives() {
    GAME INIT / END
 ══════════════════════════════════════════════════════════════ */
 function startGame() {
-  STATE.score = 0; STATE.lives = 3; STATE.level = 1;
+  STATE.score = 0; STATE.lives = CONFIG.LIVES || 3; STATE.level = 1;
   STATE.qIndex = 0; STATE.correctCount = 0; STATE.wrongCount = 0;
+  STATE.questionsTotal = QUESTIONS.length;
   STATE.paused = false; STATE.running = true; STATE.gameOver = false;
   GAME_SPEED = 4;
   obstacles = []; particles = []; obsTimer = 0; obsInterval = 2800;
@@ -1233,8 +1325,10 @@ function endGame(win) {
   document.getElementById('es-time').textContent = elapsed + 's';
 
   document.getElementById('end-screen').classList.remove('hidden');
-
   document.getElementById('cert-btn').style.display = win ? 'block' : 'none';
+
+  // Log to Sheets (non-blocking)
+  logResult(STATE.playerName, STATE.score, STATE.correctCount, STATE.questionsTotal, win);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1435,6 +1529,9 @@ document.getElementById('cert-dl').addEventListener('click', () => {
 document.getElementById('cert-close').addEventListener('click', () => {
   document.getElementById('cert-overlay').classList.add('hidden');
 });
+
+/* ── INIT: fetch questions on page load ─────────────────────── */
+fetchQuestions();
 </script>
 </body>
 </html>
