@@ -394,6 +394,8 @@ async function doLogin() {
       sessionStorage.setItem('szc_email', email);
       sessionStorage.setItem('szc_name',  data.name  || 'Student');
       sessionStorage.setItem('szc_batch', data.batch || '');
+      localStorage.setItem('szc_token', token);
+localStorage.setItem('szc_name', data.name || 'Student');
 
       const okEl = document.getElementById('login-ok');
       document.getElementById('login-ok-body').textContent =
