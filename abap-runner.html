@@ -272,7 +272,7 @@ body { cursor:default; overflow:hidden; background:#0d1117; }
   }
 
   // ── Auth guard — redirect if not logged in ────────────────
-  if (!sessionStorage.getItem('szc_token')) {
+ if (!sessionStorage.getItem('szc_token') && !localStorage.getItem('szc_token')) {
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('auth-screen').classList.remove('hidden');
     throw new Error('Not authenticated');
