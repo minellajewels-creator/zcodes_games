@@ -264,7 +264,7 @@ body { cursor:default; overflow:hidden; background:#0d1117; }
   }, 1200);
 
   // ── Domain lock (Strong) — check we're on the right origin ─
-  const ALLOWED = ['minellajewels-creator.github.io', 'localhost', '127.0.0.1'];
+  const ALLOWED = ['students.sapzcodes.com', 'localhost', '127.0.0.1'];
   const host = window.location.hostname;
   if (!ALLOWED.some(d => host === d || host.endsWith('.' + d))) {
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d1117;color:#c0392b;font-family:monospace;font-size:1.1rem;text-align:center;padding:20px;">⛔ This content is only available on the official SAPZCodes platform.</div>';
