@@ -5,291 +5,738 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>SAPZCodes 3D Endless Runner</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #0d1117; color: white; font-family: 'JetBrains Mono', monospace; }
-    
-    /* UI Overlays */
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    #score-board { position: absolute; top: 20px; right: 30px; font-size: 1.5rem; font-weight: bold; color: #22a032; text-shadow: 1px 1px 4px #000; }
-    #current-question { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); text-align: center; background: rgba(13, 17, 23, 0.85); padding: 15px 30px; border: 1px solid #22a032; border-radius: 8px; font-size: 1.2rem; max-width: 60%; display: none; }
-    
-    /* 3D Track Overlay Text */
-    .obstacle-text { position: absolute; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); padding: 8px 15px; border-radius: 6px; font-weight: bold; text-align: center; border: 1px solid #555; transition: top 0.1s linear, left 0.1s linear; display: none; }
-    .lane-0 { border-color: #2563eb; }
-    .lane-1 { border-color: #d97706; }
-    .lane-2 { border-color: #c0392b; }
+    :root { --g:#22a032; --fm:'JetBrains Mono',monospace; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { overflow:hidden; background:#0d1117; color:#f0f4f0; font-family:var(--fm); }
 
-    /* Game Over Screen */
-    #game-over-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; display: none; }
-    #game-over-screen h1 { color: #c0392b; font-size: 4rem; margin-bottom: 10px; }
-    #final-score { font-size: 2rem; color: #22a032; margin-bottom: 30px; }
-    .btn { padding: 12px 30px; background: #22a032; border: none; border-radius: 8px; color: white; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
-    .btn:hover { background: #1a8028; }
+    /* ── Auth Screen ─────────────────────────────────────── */
+    #auth-screen {
+      position:fixed; inset:0; background:#0d1117; z-index:999;
+      display:none; flex-direction:column; align-items:center;
+      justify-content:center; gap:14px;
+    }
+    .auth-icon  { font-size:3rem; }
+    .auth-title { font-size:1.5rem; font-weight:700; color:#c0392b; }
+    .auth-sub   { font-size:.82rem; color:rgba(240,244,240,.4); text-align:center; max-width:340px; }
+    .auth-btn   { padding:10px 26px; border:none; border-radius:8px; background:var(--g);
+                  color:#fff; font-size:.95rem; font-weight:700; cursor:pointer; margin-top:8px; }
+    .auth-btn:hover { background:#1a8028; }
+
+    /* ── Loading Screen ──────────────────────────────────── */
+    #loading-screen {
+      position:fixed; inset:0; background:#0d1117; z-index:90;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; gap:10px;
+    }
+    .ld-brand { font-size:.65rem; letter-spacing:.22em; text-transform:uppercase;
+                color:var(--g); margin-bottom:6px; }
+    .ld-title { font-size:1.6rem; font-weight:700; color:#f0f4f0; }
+    .ld-title span { color:var(--g); }
+    .ld-bar-wrap { width:300px; max-width:88vw; background:rgba(255,255,255,.06);
+                   border:1px solid rgba(255,255,255,.08); border-radius:20px;
+                   height:5px; overflow:hidden; margin-top:6px; }
+    .ld-bar-fill { height:100%; background:linear-gradient(90deg,var(--g),#58a6ff);
+                   border-radius:20px; width:0%; transition:width .35s ease; }
+    .ld-status { font-size:.63rem; color:rgba(240,244,240,.3); letter-spacing:.05em;
+                 min-height:16px; margin-top:2px; }
+    .ld-err { margin-top:14px; padding:10px 18px; background:rgba(192,57,43,.1);
+              border:1px solid rgba(192,57,43,.25); border-radius:8px; color:#c0392b;
+              font-size:.78rem; text-align:center; display:none; max-width:360px; line-height:1.5; }
+    .ld-err.show { display:block; }
+    .ld-retry { margin-top:10px; padding:7px 20px; border-radius:7px;
+                background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+                color:rgba(240,244,240,.6); font-size:.78rem; font-weight:600;
+                cursor:pointer; display:none; }
+    .ld-retry.show { display:inline-block; }
+    .ld-retry:hover { border-color:var(--g); color:var(--g); }
+
+    /* ── HUD ─────────────────────────────────────────────── */
+    #hud {
+      position:fixed; top:0; left:0; right:0; height:52px; z-index:20;
+      background:rgba(13,17,23,.88); backdrop-filter:blur(8px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+      display:none; align-items:center; justify-content:space-between; padding:0 22px;
+    }
+    .hud-brand { font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:var(--g); }
+    .hud-stats { display:flex; gap:22px; align-items:center; }
+    .hud-stat  { display:flex; flex-direction:column; align-items:center; }
+    .hud-lbl   { font-size:.5rem; letter-spacing:.1em; text-transform:uppercase;
+                 color:rgba(240,244,240,.3); }
+    .hud-val   { font-size:.92rem; font-weight:700; color:#f0f4f0; line-height:1; }
+    .hud-val.green { color:var(--g); }
+    .hud-lives { display:flex; gap:3px; }
+    .heart { font-size:.8rem; transition:all .2s; }
+    .heart.lost { opacity:.18; filter:grayscale(1); transform:scale(.8); }
+
+    /* ── Question box ────────────────────────────────────── */
+    #question-box {
+      position:fixed; top:66px; left:50%; transform:translateX(-50%);
+      background:rgba(13,17,23,.9); border:1px solid var(--g); border-radius:10px;
+      padding:14px 26px; text-align:center; max-width:62%;
+      font-size:1.05rem; line-height:1.6; display:none; z-index:20;
+      box-shadow:0 4px 28px rgba(34,160,50,.18);
+    }
+    .q-lbl { font-size:.55rem; letter-spacing:.14em; text-transform:uppercase;
+             color:rgba(240,244,240,.3); margin-bottom:5px; }
+
+    /* ── Lane labels ─────────────────────────────────────── */
+    .obs-label {
+      position:fixed; transform:translate(-50%,-50%);
+      background:rgba(0,0,0,.82); padding:7px 13px; border-radius:6px;
+      font-size:.78rem; font-weight:700; text-align:center; pointer-events:none;
+      display:none; max-width:150px; line-height:1.3; z-index:20;
+    }
+    .obs-label.l0 { border:1px solid #2563eb; color:#93c5fd; }
+    .obs-label.l1 { border:1px solid #d97706; color:#fcd34d; }
+    .obs-label.l2 { border:1px solid #c0392b; color:#fca5a5; }
+
+    /* ── Feedback flash ──────────────────────────────────── */
+    #flash {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-size:1.8rem; font-weight:900; padding:12px 28px; border-radius:10px;
+      pointer-events:none; display:none; z-index:30;
+    }
+    #flash.ok  { background:rgba(34,160,50,.14); color:var(--g); border:2px solid rgba(34,160,50,.35); }
+    #flash.bad { background:rgba(192,57,43,.13); color:#ef4444; border:2px solid rgba(192,57,43,.35); }
+
+    /* ── Mobile swipe hint ───────────────────────────────── */
+    #swipe-hint {
+      position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+      font-size:.65rem; color:rgba(240,244,240,.22); z-index:20; display:none;
+    }
+
+    /* ── Game Over ───────────────────────────────────────── */
+    #game-over {
+      position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:40;
+      display:none; flex-direction:column; align-items:center;
+      justify-content:center; gap:10px;
+    }
+    #game-over h1  { color:#c0392b; font-size:3.8rem; }
+    #go-score      { font-size:2rem; color:var(--g); }
+    #go-detail     { font-size:.82rem; color:rgba(240,244,240,.4); margin-bottom:16px; }
+    .btn { padding:11px 28px; border:none; border-radius:8px; color:#fff;
+           font-size:1rem; font-weight:700; cursor:pointer; transition:all .18s; margin:4px; }
+    .btn-p { background:var(--g); }
+    .btn-p:hover { background:#1a8028; transform:translateY(-2px); }
+    .btn-s { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); color:rgba(240,244,240,.6); }
+    .btn-s:hover { border-color:var(--g); color:var(--g); background:rgba(34,160,50,.08); }
   </style>
 
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
+  }
   </script>
 </head>
 <body>
 
-  <div id="ui-layer">
-    <div id="score-board">Score: <span id="score">0</span></div>
-    <div id="current-question">Loading questions...</div>
-    
-    <div id="obs-0" class="obstacle-text lane-0">Option A</div>
-    <div id="obs-1" class="obstacle-text lane-1">Option B</div>
-    <div id="obs-2" class="obstacle-text lane-2">Option C</div>
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-icon">🔒</div>
+  <div class="auth-title">Access Required</div>
+  <div class="auth-sub">You need to be logged in to play the Runner. Please enter the platform first.</div>
+  <button class="auth-btn" onclick="window.location.href='index.html'">→ Login / Get Access</button>
+</div>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="ld-brand">SAPZCODES</div>
+  <div class="ld-title">3D <span>Runner</span></div>
+  <div class="ld-bar-wrap"><div class="ld-bar-fill" id="ld-bar"></div></div>
+  <div class="ld-status" id="ld-status">Initialising…</div>
+  <div class="ld-err"   id="ld-err"></div>
+  <button class="ld-retry" id="ld-retry" onclick="window._retryFetch()">↩ Retry</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-brand">◉ ABAP Runner</div>
+  <div class="hud-stats">
+    <div class="hud-stat">
+      <span class="hud-lbl">Score</span>
+      <span class="hud-val green" id="hud-score">0</span>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-lbl">Correct</span>
+      <span class="hud-val" id="hud-correct">0</span>
+    </div>
+    <div class="hud-lives">
+      <span class="heart" id="h1">❤️</span>
+      <span class="heart" id="h2">❤️</span>
+      <span class="heart" id="h3">❤️</span>
+    </div>
   </div>
+</div>
 
-  <div id="game-over-screen">
-    <h1>GAME OVER</h1>
-    <div id="final-score">Score: 0</div>
-    <button class="btn" onclick="location.reload()">Restart Run</button>
-  </div>
+<!-- Question -->
+<div id="question-box">
+  <div class="q-lbl">Question</div>
+  <span id="q-text"></span>
+</div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+<!-- Lane answer labels -->
+<div id="obs-0" class="obs-label l0"></div>
+<div id="obs-1" class="obs-label l1"></div>
+<div id="obs-2" class="obs-label l2"></div>
 
-    // ─────────────────────────────────────────────────────────────────
-    // 1. SCENE SETUP
-    // ─────────────────────────────────────────────────────────────────
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0d1117, 0.03);
+<!-- Feedback -->
+<div id="flash"></div>
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, -10); 
-    camera.lookAt(0, 2, 5);
+<!-- Mobile hint -->
+<div id="swipe-hint">← Swipe to change lane →</div>
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x0d1117);
-    document.body.appendChild(renderer.domElement);
+<!-- Game Over -->
+<div id="game-over">
+  <h1>GAME OVER</h1>
+  <div id="go-score">Score: 0</div>
+  <div id="go-detail">0 correct answers</div>
+  <button class="btn btn-p" onclick="location.reload()">↩ Play Again</button>
+  <button class="btn btn-s" onclick="window.location.href='games.html'">← Games Hub</button>
+</div>
 
-    // Lighting
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-    hemiLight.position.set(0, 20, 0);
-    scene.add(hemiLight);
-    
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(-3, 10, -10);
-    scene.add(dirLight);
+<!-- ── Security block (sync, before module) ────────────────── -->
+<script>
+(function () {
+  // Disable right-click + common devtools shortcuts
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' ||
+       (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(e.key)) ||
+       (e.ctrlKey && e.key === 'U') ||
+       (e.ctrlKey && ['s','S','a','A'].includes(e.key))) { e.preventDefault(); }
+  });
 
-    // Floor / Track
-    const gridHelper = new THREE.GridHelper(100, 50, 0x22a032, 0x22a032);
-    gridHelper.position.y = 0;
-    scene.add(gridHelper);
-
-    // ─────────────────────────────────────────────────────────────────
-    // 2. CHARACTER MODEL & ANIMATION
-    // ─────────────────────────────────────────────────────────────────
-    let mixer, character;
-    let clock = new THREE.Clock();
-    
-    const loader = new FBXLoader();
-    // Start by loading the running animation model directly
-    loader.load('models/running.fbx', (fbx) => {
-      character = fbx;
-      character.scale.set(0.02, 0.02, 0.02); // Adjust scale based on your FBX
-      character.position.set(0, 0, 0);
-      character.rotation.y = Math.PI; // Face forward along positive Z
-      scene.add(character);
-
-      mixer = new THREE.AnimationMixer(character);
-      const action = mixer.clipAction(fbx.animations[0]);
-      action.play();
-    });
-
-    // ─────────────────────────────────────────────────────────────────
-    // 3. CONTROLLER (Keyboard & Touch)
-    // ─────────────────────────────────────────────────────────────────
-    const lanes = [-2.5, 0, 2.5]; // Left, Center, Right x-coordinates
-    let currentLane = 1; // Start in center
-    let targetX = lanes[currentLane];
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' && currentLane > 0) currentLane--;
-      if (e.key === 'ArrowRight' && currentLane < 2) currentLane++;
-      targetX = lanes[currentLane];
-    });
-
-    let touchStartX = 0;
-    window.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
-    window.addEventListener('touchend', e => {
-      let touchEndX = e.changedTouches[0].screenX;
-      if (touchEndX < touchStartX - 30 && currentLane > 0) currentLane--; // Swipe Left
-      if (touchEndX > touchStartX + 30 && currentLane < 2) currentLane++; // Swipe Right
-      targetX = lanes[currentLane];
-    });
-
-    // ─────────────────────────────────────────────────────────────────
-    // 4. QUIZ LOGIC & FETCH
-    // ─────────────────────────────────────────────────────────────────
-    const GAS_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
-    let quizData = [];
-    let activeQuestion = null;
-    let score = 0;
-    let isGameOver = false;
-
-    // Obstacle physical blocks in the scene
-    let obstacleMeshes = [];
-    let obstacleData = []; 
-    const gameSpeed = 15; // Z-axis units per second
-
-    async function fetchQuestions() {
-      try {
-        const res = await fetch(GAS_URL);
-        const json = await res.json();
-        if (json.status === 'ok') {
-          quizData = json.data;
-          spawnNextQuestion();
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        document.getElementById('current-question').innerText = "Failed to load DB";
-      }
+  // DevTools size detector
+  setInterval(() => {
+    if (window.outerWidth  - window.innerWidth  > 160 ||
+        window.outerHeight - window.innerHeight > 160) {
+      document.body.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100vh;' +
+        'background:#0d1117;color:#c0392b;font-family:monospace;font-size:1.1rem;' +
+        'text-align:center;padding:20px;">⛔ DevTools detected. Close DevTools to continue.</div>';
     }
+  }, 1200);
 
-    function spawnNextQuestion() {
-      if (quizData.length === 0) return;
-      
-      // Pick random question
-      const randIdx = Math.floor(Math.random() * quizData.length);
-      activeQuestion = quizData[randIdx];
-      
-      document.getElementById('current-question').innerText = activeQuestion.question;
-      document.getElementById('current-question').style.display = 'block';
+  // Domain lock
+  const ALLOWED = ['students.sapzcodes.com', 'localhost', '127.0.0.1'];
+  if (!ALLOWED.some(d => {
+    const h = window.location.hostname;
+    return h === d || h.endsWith('.' + d);
+  })) {
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;' +
+      'background:#0d1117;color:#c0392b;font-family:monospace;font-size:1.1rem;' +
+      'text-align:center;padding:20px;">⛔ This content is only available on the official SAPZCodes platform.</div>';
+    throw new Error('Domain lock');
+  }
 
-      // Prepare answers and shuffle lanes
-      const answers = [
-        { text: activeQuestion.correct, isCorrect: true },
-        { text: activeQuestion.wrong1, isCorrect: false },
-        { text: activeQuestion.wrong2, isCorrect: false }
-      ];
-      answers.sort(() => Math.random() - 0.5); // Shuffle
+  // Auth guard — same tokens as index.html / abap-runner.html
+  if (!sessionStorage.getItem('szc_token') && !localStorage.getItem('szc_token')) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display    = 'flex';
+    throw new Error('Not authenticated');
+  }
+})();
+</script>
 
-      // Clear old meshes
-      obstacleMeshes.forEach(mesh => scene.remove(mesh));
-      obstacleMeshes = [];
-      obstacleData = [];
+<!-- ── Main game module ─────────────────────────────────────── -->
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
-      // Spawn new obstacles at Z = 40 (far ahead)
-      for (let i = 0; i < 3; i++) {
-        // Physical box representation
-        const geometry = new THREE.BoxGeometry(2, 2, 0.5);
-        const material = new THREE.MeshLambertMaterial({ color: 0x333333, transparent: true, opacity: 0.5 });
-        const box = new THREE.Mesh(geometry, material);
-        box.position.set(lanes[i], 1, 40);
-        scene.add(box);
-        obstacleMeshes.push(box);
+// ─── CONFIG ────────────────────────────────────────────────────
+const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwy_yWVkYL6qN_QAokIUMNClWqI96wdiF3qasWVLihOMi9ecH12BSzG6ypSZI1A54VA/exec';
+const API_SECRET = 'SZC-INTERNAL-2025-XK9';
+const LIVES      = 3;
+const SPAWN_Z    = 50;
+const LANES      = [-2.5, 0, 2.5];
 
-        // Data for HTML mapping
-        obstacleData.push({
-          mesh: box,
-          isCorrect: answers[i].isCorrect,
-          uiElement: document.getElementById(`obs-${i}`),
-          text: answers[i].text
-        });
+// ─── LOADING UI ────────────────────────────────────────────────
+function setBar(pct, msg) {
+  document.getElementById('ld-bar').style.width = pct + '%';
+  document.getElementById('ld-status').textContent = msg;
+}
+function showErr(msg) {
+  const e = document.getElementById('ld-err');
+  e.textContent = msg; e.classList.add('show');
+  document.getElementById('ld-retry').classList.add('show');
+}
+function hideErr() {
+  document.getElementById('ld-err').classList.remove('show');
+  document.getElementById('ld-retry').classList.remove('show');
+}
 
-        const uiElem = document.getElementById(`obs-${i}`);
-        uiElem.innerText = answers[i].text;
-        uiElem.style.display = 'block';
-      }
-    }
+// ─── FETCH QUESTIONS ───────────────────────────────────────────
+let quizData = [];
 
-    // ─────────────────────────────────────────────────────────────────
-    // 5. UPDATE LOOP & COLLISIONS
-    // ─────────────────────────────────────────────────────────────────
-    const vec3 = new THREE.Vector3();
+async function fetchQuestions() {
+  hideErr(); setBar(10, 'Connecting to question bank…');
+  try {
+    setBar(35, 'Fetching subway questions…');
+    const url = `${GAS_URL}?action=getSubwayData&key=${encodeURIComponent(API_SECRET)}`;
+    const res  = await fetch(url, { redirect: 'follow' });
+    setBar(65, 'Parsing…');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.status !== 'ok' || !json.data || json.data.length === 0)
+      throw new Error('No questions returned — check the "subway" tab in your sheet.');
+    quizData = json.data;
+    setBar(85, 'Loading 3D assets…');
+    await loadScene();                     // load Three.js scene + FBX models
+    setBar(100, '✓ Ready!');
+    await new Promise(r => setTimeout(r, 400));
+    document.getElementById('loading-screen').style.display = 'none';
+    startGame();
+  } catch (err) {
+    setBar(30, '');
+    showErr('Could not load: ' + err.message);
+  }
+}
 
-    function updateObstacles(delta) {
-      if (!activeQuestion || isGameOver) return;
+// Expose for the retry button (outside module scope)
+window._retryFetch = fetchQuestions;
 
-      for (let i = 0; i < obstacleData.length; i++) {
-        const obs = obstacleData[i];
-        obs.mesh.position.z -= gameSpeed * delta;
+// ─── SCENE ─────────────────────────────────────────────────────
+const scene    = new THREE.Scene();
+scene.fog      = new THREE.FogExp2(0x0d1117, 0.026);
 
-        // Map 3D position to 2D HTML overlay
-        vec3.copy(obs.mesh.position);
-        vec3.project(camera);
-        
-        // Convert to screen coordinates
-        const x = (vec3.x * .5 + .5) * window.innerWidth;
-        const y = (vec3.y * -.5 + .5) * window.innerHeight;
-        
-        obs.uiElement.style.left = `${x}px`;
-        obs.uiElement.style.top = `${y - 40}px`; // slightly above the box
+const camera   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 5, -10);
+camera.lookAt(0, 2, 5);
 
-        // Collision Check (Character is at Z = 0)
-        if (obs.mesh.position.z < 0.5 && obs.mesh.position.z > -0.5) {
-          // If character is in the same lane
-          if (lanes[currentLane] === obs.mesh.position.x) {
-            handleCollision(obs.isCorrect);
-            // Hide everything for next spawn
-            obstacleData.forEach(o => o.uiElement.style.display = 'none');
-            obstacleData = []; 
-            break;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x0d1117);
+renderer.shadowMap.enabled = true;
+renderer.domElement.style.cssText = 'position:fixed;inset:0;z-index:1;';
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── LIGHTS ────────────────────────────────────────────────────
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+hemi.position.set(0, 20, 0);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(3, 14, -8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+scene.add(sun);
+
+// Subtle green rim light from front
+const rim = new THREE.PointLight(0x22a032, 0.6, 30);
+rim.position.set(0, 6, 8);
+scene.add(rim);
+
+// ─── TRACK ─────────────────────────────────────────────────────
+// Main track surface
+const trackMat  = new THREE.MeshLambertMaterial({ color: 0x161b22 });
+const trackMesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 600), trackMat);
+trackMesh.rotation.x = -Math.PI / 2;
+trackMesh.position.set(0, 0, 280);
+trackMesh.receiveShadow = true;
+scene.add(trackMesh);
+
+// Lane dividers
+[-1.25, 1.25].forEach(x => {
+  const div = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.07, 600),
+    new THREE.MeshBasicMaterial({ color: 0x22a032, transparent: true, opacity: 0.35 })
+  );
+  div.rotation.x = -Math.PI / 2;
+  div.position.set(x, 0.01, 280);
+  scene.add(div);
+});
+
+// Side walls (neon border effect)
+[-5.2, 5.2].forEach(x => {
+  const wall = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.12, 600),
+    new THREE.MeshBasicMaterial({ color: 0x22a032, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+  );
+  wall.position.set(x, 1.2, 280);
+  scene.add(wall);
+});
+
+// Background grid (off-track)
+const grid = new THREE.GridHelper(120, 60, 0x22a032, 0x1a2a1e);
+grid.position.y = 0;
+scene.add(grid);
+
+// Scrolling floor tiles with ABAP words
+const FLOOR_WORDS = ['DATA','TYPE','LOOP','SELECT','IF','FORM','CALL','READ','SORT','MOVE','WRITE','CLASS','METHOD','CLEAR','BDEF','CDS'];
+const TILE_W = 9.4, TILE_D = 8, TILE_COUNT = 16;
+const floorTiles = [];
+for (let i = 0; i < TILE_COUNT; i++) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, 256, 64);
+  ctx.fillStyle = 'rgba(34,160,50,0.18)';
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(FLOOR_WORDS[i % FLOOR_WORDS.length], 128, 42);
+  const tex = new THREE.CanvasTexture(canvas);
+  const tile = new THREE.Mesh(
+    new THREE.PlaneGeometry(TILE_W, TILE_D),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9 })
+  );
+  tile.rotation.x = -Math.PI / 2;
+  tile.position.set(0, 0.005, i * TILE_D);
+  scene.add(tile);
+  floorTiles.push(tile);
+}
+
+// ─── FBX CHARACTER ─────────────────────────────────────────────
+let mixer       = null;
+let idleAction  = null;
+let runAction   = null;
+let charGroup   = new THREE.Group();
+charGroup.position.set(0, 0, 0);
+scene.add(charGroup);
+
+function loadScene() {
+  return new Promise((resolve, reject) => {
+    const fbxLoader = new FBXLoader();
+
+    // Step 1 — load idle.fbx (base mesh + skeleton + idle anim)
+    fbxLoader.load(
+      'models/idle.fbx',
+      (idleFbx) => {
+        idleFbx.scale.set(0.022, 0.022, 0.022);
+        idleFbx.rotation.y = Math.PI;   // face forward (+Z)
+        idleFbx.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow    = true;
+            child.receiveShadow = true;
           }
-        }
+        });
+        charGroup.add(idleFbx);
+
+        mixer     = new THREE.AnimationMixer(idleFbx);
+        idleAction = mixer.clipAction(idleFbx.animations[0]);
+        idleAction.play();                 // start in idle
+
+        setBar(92, 'Loading running animation…');
+
+        // Step 2 — load running.fbx (animation clip only)
+        fbxLoader.load(
+          'models/running.fbx',
+          (runFbx) => {
+            // Retarget the clip onto the already-loaded skeleton
+            runAction = mixer.clipAction(runFbx.animations[0]);
+            runAction.enabled = false;     // don't play yet
+            resolve();
+          },
+          undefined,
+          (err) => {
+            // running.fbx failed — we can still play with idle only
+            console.warn('running.fbx load failed:', err);
+            resolve();
+          }
+        );
+      },
+      undefined,
+      (err) => reject(new Error('idle.fbx failed: ' + err.message))
+    );
+  });
+}
+
+// Smooth crossfade between idle ↔ run
+function playIdle() {
+  if (!mixer || !idleAction) return;
+  if (runAction && runAction.isRunning()) {
+    runAction.crossFadeTo(idleAction, 0.3, true);
+  }
+  idleAction.play();
+}
+function playRun() {
+  if (!mixer || !runAction) return;
+  if (idleAction && idleAction.isRunning()) {
+    idleAction.crossFadeTo(runAction, 0.3, true);
+  }
+  runAction.enabled = true;
+  runAction.play();
+}
+
+// ─── GAME STATE ────────────────────────────────────────────────
+const state = {
+  currentLane   : 1,
+  targetX       : 0,
+  score         : 0,
+  lives         : LIVES,
+  correct       : 0,
+  gameOver      : false,
+  running       : false,
+  qIndex        : 0,
+  speed         : 15,
+};
+
+let activeQuestion  = null;
+let obstacleMeshes  = [];
+let obstacleData    = [];
+let questionPending = false;
+const clock         = new THREE.Clock();
+const projVec       = new THREE.Vector3();
+
+// ─── CONTROLS ──────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (state.gameOver) return;
+  if (e.key === 'ArrowLeft'  && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
+  if (e.key === 'ArrowRight' && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
+});
+let _tx = 0;
+window.addEventListener('touchstart', e => { _tx = e.changedTouches[0].screenX; }, { passive: true });
+window.addEventListener('touchend',   e => {
+  const dx = e.changedTouches[0].screenX - _tx;
+  if (dx < -30 && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
+  if (dx >  30 && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
+});
+
+// ─── HUD HELPERS ───────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('hud-score').textContent   = state.score;
+  document.getElementById('hud-correct').textContent = state.correct;
+}
+function updateLives() {
+  ['h1','h2','h3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'heart' + (i >= state.lives ? ' lost' : '');
+  });
+}
+
+// ─── SPAWN QUESTION ────────────────────────────────────────────
+const LANE_COLORS = [0x2563eb, 0xd97706, 0xc0392b];
+
+function spawnNextQuestion() {
+  if (quizData.length === 0) return;
+  if (state.qIndex >= quizData.length) state.qIndex = 0;
+
+  activeQuestion = quizData[state.qIndex++];
+
+  document.getElementById('q-text').textContent = activeQuestion.question;
+  document.getElementById('question-box').style.display = 'block';
+
+  const answers = [
+    { text: activeQuestion.correct, correct: true  },
+    { text: activeQuestion.wrong1,  correct: false },
+    { text: activeQuestion.wrong2,  correct: false },
+  ].sort(() => Math.random() - 0.5);
+
+  // Clear old obstacles
+  obstacleMeshes.forEach(m => scene.remove(m));
+  obstacleMeshes = [];
+  obstacleData   = [];
+
+  for (let i = 0; i < 3; i++) {
+    // Pillar mesh
+    const geo  = new THREE.BoxGeometry(2.0, 2.4, 0.55);
+    const mat  = new THREE.MeshLambertMaterial({
+      color: LANE_COLORS[i], transparent: true, opacity: 0.6,
+    });
+    const box = new THREE.Mesh(geo, mat);
+    box.position.set(LANES[i], 1.2, SPAWN_Z);
+    box.castShadow = true;
+
+    // Outline edges
+    const edges = new THREE.EdgesGeometry(geo);
+    box.add(new THREE.LineSegments(edges,
+      new THREE.LineBasicMaterial({ color: LANE_COLORS[i], transparent: true, opacity: 0.95 })
+    ));
+
+    scene.add(box);
+    obstacleMeshes.push(box);
+
+    const label = document.getElementById(`obs-${i}`);
+    label.textContent = answers[i].text;
+    label.style.display = 'block';
+
+    obstacleData.push({ mesh: box, correct: answers[i].correct, label });
+  }
+  questionPending = false;
+}
+
+// ─── OBSTACLE UPDATE & COLLISION ───────────────────────────────
+function updateObstacles(dt) {
+  if (!activeQuestion || state.gameOver || questionPending) return;
+
+  for (let i = 0; i < obstacleData.length; i++) {
+    const obs = obstacleData[i];
+    obs.mesh.position.z -= state.speed * dt;
+
+    // Project to screen for HTML label positioning
+    projVec.copy(obs.mesh.position);
+    projVec.project(camera);
+    if (projVec.z < 1.0) {
+      obs.label.style.left = ((projVec.x * 0.5 + 0.5) * window.innerWidth)  + 'px';
+      obs.label.style.top  = ((projVec.y * -0.5 + 0.5) * window.innerHeight - 60) + 'px';
+    }
+
+    // Collision zone
+    if (obs.mesh.position.z < 1.0 && obs.mesh.position.z > -1.5) {
+      if (Math.abs(LANES[state.currentLane] - obs.mesh.position.x) < 0.7) {
+        questionPending = true;
+        obstacleData.forEach(o => { o.label.style.display = 'none'; });
+        onAnswer(obs.correct);
+        return;
       }
     }
 
-    function handleCollision(isCorrect) {
-      if (isCorrect) {
-        score += 100;
-        document.getElementById('score').innerText = score;
-        spawnNextQuestion(); // Success, queue the next one
-      } else {
-        triggerGameOver();
-      }
+    // Missed — all obstacles passed the player
+    if (obs.mesh.position.z < -3.5 && !questionPending) {
+      questionPending = true;
+      obstacleData.forEach(o => { o.label.style.display = 'none'; });
+      onAnswer(false); // missed = wrong
+      return;
     }
+  }
+}
 
-    function triggerGameOver() {
-      isGameOver = true;
-      document.getElementById('current-question').style.display = 'none';
-      obstacleData.forEach(o => o.uiElement.style.display = 'none');
-      document.getElementById('game-over-screen').style.display = 'flex';
-      document.getElementById('final-score').innerText = `Final Score: ${score}`;
+function onAnswer(correct) {
+  document.getElementById('question-box').style.display = 'none';
+  const flash = document.getElementById('flash');
+
+  // Stop running, do idle for a moment
+  playIdle();
+
+  if (correct) {
+    state.score   += 100;
+    state.correct += 1;
+    state.speed    = Math.min(32, state.speed + 0.6);
+    flash.textContent = '✓ CORRECT! +100';
+    flash.className   = 'ok';
+    flash.style.display = 'block';
+  } else {
+    state.lives--;
+    updateLives();
+    flash.textContent = '✗ WRONG! −1 Life';
+    flash.className   = 'bad';
+    flash.style.display = 'block';
+    if (state.lives <= 0) {
+      setTimeout(triggerGameOver, 900);
+      return;
     }
+  }
+  updateHUD();
 
-    function animate() {
-      requestAnimationFrame(animate);
-      
-      const delta = clock.getDelta();
+  // Clear obstacles, hide flash, resume running
+  obstacleMeshes.forEach(m => scene.remove(m));
+  obstacleMeshes = [];
+  obstacleData   = [];
 
-      // Smooth Character Lane Switching
-      if (character && !isGameOver) {
-        mixer.update(delta);
-        character.position.x = THREE.MathUtils.lerp(character.position.x, targetX, 10 * delta);
-      }
+  setTimeout(() => { flash.style.display = 'none'; }, 1000);
+  setTimeout(() => { playRun(); spawnNextQuestion(); }, 1300);
+}
 
-      // Scroll floor texture to simulate movement
-      if (!isGameOver) {
-        gridHelper.position.z -= gameSpeed * delta;
-        if (gridHelper.position.z < -10) gridHelper.position.z = 0;
-      }
+function triggerGameOver() {
+  state.gameOver = true;
+  playIdle();
+  obstacleData.forEach(o => { o.label.style.display = 'none'; });
+  document.getElementById('question-box').style.display = 'none';
+  document.getElementById('flash').style.display        = 'none';
+  document.getElementById('go-score').textContent  = 'Score: '  + state.score;
+  document.getElementById('go-detail').textContent = state.correct + ' correct answers';
+  document.getElementById('game-over').style.display = 'flex';
+}
 
-      updateObstacles(delta);
+// ─── PARTICLES ─────────────────────────────────────────────────
+const particles = [];
+function spawnParticles(color) {
+  for (let i = 0; i < 14; i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 4, 4),
+      new THREE.MeshBasicMaterial({ color, transparent: true })
+    );
+    p.position.copy(charGroup.position);
+    p.position.y += 1.2;
+    p._v = new THREE.Vector3(
+      (Math.random() - 0.5) * 5,
+      3 + Math.random() * 4,
+      (Math.random() - 0.5) * 2
+    );
+    p._life = 1.0;
+    scene.add(p);
+    particles.push(p);
+  }
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p._v.y -= 8 * dt;
+    p.position.addScaledVector(p._v, dt);
+    p._life -= dt * 1.8;
+    p.material.opacity = Math.max(0, p._life);
+    if (p._life <= 0) { scene.remove(p); particles.splice(i, 1); }
+  }
+}
 
-      renderer.render(scene, camera);
-    }
+// ─── START GAME ────────────────────────────────────────────────
+function startGame() {
+  state.currentLane   = 1;
+  state.targetX       = 0;
+  state.score         = 0;
+  state.lives         = LIVES;
+  state.correct       = 0;
+  state.gameOver      = false;
+  state.running       = true;
+  state.qIndex        = 0;
+  state.speed         = 15;
 
-    // Handle Window Resize
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+  updateHUD();
+  updateLives();
+
+  document.getElementById('hud').style.display         = 'flex';
+  document.getElementById('swipe-hint').style.display  = 'block';
+  document.getElementById('game-over').style.display   = 'none';
+
+  playRun();
+  spawnNextQuestion();
+  clock.getDelta(); // flush clock
+  requestAnimationFrame(loop);
+}
+
+// ─── MAIN LOOP ─────────────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (!state.gameOver && state.running) {
+    // Smooth lane switch
+    charGroup.position.x = THREE.MathUtils.lerp(charGroup.position.x, state.targetX, 10 * dt);
+
+    // Scroll floor tiles
+    const TOTAL = TILE_COUNT * TILE_D;
+    floorTiles.forEach(tile => {
+      tile.position.z -= state.speed * dt;
+      if (tile.position.z < -TILE_D * 2) tile.position.z += TOTAL;
     });
 
-    // Start Game
-    fetchQuestions();
-    animate();
+    // Scroll grid
+    grid.position.z -= state.speed * dt;
+    if (grid.position.z < -10) grid.position.z = 0;
 
-  </script>
+    updateObstacles(dt);
+    updateParticles(dt);
+  }
+
+  // Always update mixer (animations)
+  if (mixer) mixer.update(dt);
+
+  renderer.render(scene, camera);
+}
+
+// ─── KICK OFF ──────────────────────────────────────────────────
+fetchQuestions();
+</script>
 </body>
 </html>
