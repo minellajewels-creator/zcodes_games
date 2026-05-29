@@ -99,45 +99,6 @@
     }
     .btn-resume:hover { background:#1a8028; }
 
-    /* ── Choose lane overlay ─────────────────────────────── */
-    #choose-overlay {
-      position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
-      background:rgba(13,17,23,.92); border:1px solid var(--g);
-      border-radius:12px; padding:12px 24px; z-index:25;
-      display:none; align-items:center; gap:12px;
-      box-shadow:0 4px 28px rgba(34,160,50,.22);
-    }
-    #choose-overlay span {
-      font-size:.72rem; letter-spacing:.08em; color:rgba(240,244,240,.5);
-      text-transform:uppercase;
-    }
-    .lane-btn {
-      padding:8px 16px; border-radius:7px; border:none;
-      font-size:.85rem; font-weight:700; cursor:pointer;
-      transition:all .15s;
-    }
-    .lane-btn.l0 { background:#2563eb; color:#fff; }
-    .lane-btn.l0:hover { background:#1d4ed8; }
-    .lane-btn.l1 { background:#d97706; color:#fff; }
-    .lane-btn.l1:hover { background:#b45309; }
-    .lane-btn.l2 { background:#c0392b; color:#fff; }
-    .lane-btn.l2:hover { background:#9b2020; }
-    .lane-btn.selected { outline:3px solid #fff; transform:scale(1.08); }
-
-    /* Mobile lane arrows */
-    #mobile-lanes {
-      position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
-      display:none; gap:16px; z-index:25;
-    }
-    .mob-lane-btn {
-      width:56px; height:56px; border-radius:50%; border:none;
-      font-size:1.3rem; font-weight:900; cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-    }
-    .mob-lane-btn.l0 { background:#2563eb; color:#fff; }
-    .mob-lane-btn.l1 { background:#d97706; color:#fff; }
-    .mob-lane-btn.l2 { background:#c0392b; color:#fff; }
-
     /* ── Question box ────────────────────────────────────── */
     #question-box {
       position:fixed; top:66px; left:50%; transform:translateX(-50%);
@@ -245,26 +206,11 @@
   <span id="q-text"></span>
 </div>
 
-<!-- Choose lane overlay (shown while obstacles are waiting) -->
-<div id="choose-overlay">
-  <span>Pick your lane:</span>
-  <button class="lane-btn l0" id="cl-0" onclick="window._chooseLane(0)">Left</button>
-  <button class="lane-btn l1" id="cl-1" onclick="window._chooseLane(1)">Centre</button>
-  <button class="lane-btn l2" id="cl-2" onclick="window._chooseLane(2)">Right</button>
-</div>
-
-<!-- Mobile lane tap buttons (shown while choosing) -->
-<div id="mobile-lanes">
-  <button class="mob-lane-btn l0" onclick="window._chooseLane(0)">◀</button>
-  <button class="mob-lane-btn l1" onclick="window._chooseLane(1)">▲</button>
-  <button class="mob-lane-btn l2" onclick="window._chooseLane(2)">▶</button>
-</div>
-
 <!-- Feedback -->
 <div id="flash"></div>
 
 <!-- Mobile swipe hint -->
-<div id="swipe-hint">← Swipe to switch lane, then confirm →</div>
+<div id="swipe-hint">← → Arrow keys or swipe to choose a lane →</div>
 
 <!-- Game Over -->
 <div id="game-over">
@@ -559,92 +505,61 @@ window.addEventListener('keydown', e => {
 });
 
 // ─── LANE SELECTION ────────────────────────────────────────────
-// Highlight which lane button matches current lane
-function updateLaneButtons() {
-  for (let i = 0; i < 3; i++) {
-    const btn = document.getElementById('cl-' + i);
-    if (btn) btn.classList.toggle('selected', i === state.currentLane);
-  }
-}
-
-// Arrow keys / swipe change current lane (only during choosing phase)
+// Arrow keys: Left = move left (lane--), Right = move right (lane++)
 window.addEventListener('keydown', e => {
-  if (state.gameOver || state.paused) return;
+  if (state.gameOver || state.paused || !state.choosing) return;
 
-  if (state.choosing) {
-    // Fixed: ArrowLeft = lane index DOWN (move left visually)
-    if (e.key === 'ArrowLeft'  && state.currentLane > 0) {
-      state.currentLane--;
-      state.targetX = LANES[state.currentLane];
-      updateLaneButtons();
-    }
-    if (e.key === 'ArrowRight' && state.currentLane < 2) {
-      state.currentLane++;
-      state.targetX = LANES[state.currentLane];
-      updateLaneButtons();
-    }
-    // Enter / Space to confirm lane
-    if (e.key === 'Enter') confirmLane();
+  if (e.key === 'ArrowLeft' && state.currentLane > 0) {
+    state.currentLane--;
+    state.targetX = LANES[state.currentLane];
+    scheduleConfirm();
+  }
+  if (e.key === 'ArrowRight' && state.currentLane < 2) {
+    state.currentLane++;
+    state.targetX = LANES[state.currentLane];
+    scheduleConfirm();
   }
 });
 
+// Touch swipe: swipe right = move right (lane++), swipe left = move left (lane--)
 let _tx = 0;
 window.addEventListener('touchstart', e => { _tx = e.changedTouches[0].screenX; }, { passive: true });
 window.addEventListener('touchend', e => {
   if (state.paused || state.gameOver || !state.choosing) return;
   const dx = e.changedTouches[0].screenX - _tx;
-  if (dx > 30 && state.currentLane > 0) {
-    state.currentLane--;
-    state.targetX = LANES[state.currentLane];
-    updateLaneButtons();
-  }
-  if (dx < -30 && state.currentLane < 2) {
+  if (dx > 30 && state.currentLane < 2) {
     state.currentLane++;
     state.targetX = LANES[state.currentLane];
-    updateLaneButtons();
+    scheduleConfirm();
+  }
+  if (dx < -30 && state.currentLane > 0) {
+    state.currentLane--;
+    state.targetX = LANES[state.currentLane];
+    scheduleConfirm();
   }
 });
 
-// Called by lane buttons or Enter
+// Wait for character to visually reach the lane (~300ms lerp), then judge
+let _confirmTimer = null;
+function scheduleConfirm() {
+  clearTimeout(_confirmTimer);
+  _confirmTimer = setTimeout(confirmLane, 320);
+}
+
 function confirmLane() {
   if (!state.choosing || state.paused || state.gameOver) return;
-  // Find the obstacle in the current lane and judge
   const laneX = LANES[state.currentLane];
   let hit = null;
   for (const obs of obstacleData) {
     if (Math.abs(obs.mesh.position.x - laneX) < 0.5) { hit = obs; break; }
   }
-  if (!hit) return; // shouldn't happen
-  endChoosing();
+  if (!hit) return;
+  state.choosing  = false;
+  questionPending = true;
   onAnswer(hit.correct);
 }
 
-// Expose to HTML onclick
-window._chooseLane = (laneIdx) => {
-  if (!state.choosing || state.paused || state.gameOver) return;
-  state.currentLane = laneIdx;
-  state.targetX     = LANES[laneIdx];
-  updateLaneButtons();
-  // Small delay so user sees the character move, then confirm
-  setTimeout(confirmLane, 380);
-};
-
-function showChooseUI() {
-  document.getElementById('choose-overlay').style.display = 'flex';
-  const isMobile = window.innerWidth < 600;
-  document.getElementById('mobile-lanes').style.display = isMobile ? 'flex' : 'none';
-  updateLaneButtons();
-}
-function hideChooseUI() {
-  document.getElementById('choose-overlay').style.display = 'none';
-  document.getElementById('mobile-lanes').style.display   = 'none';
-}
-
-function endChoosing() {
-  state.choosing      = false;
-  questionPending     = true;
-  hideChooseUI();
-}
+function hideChooseUI() { /* no overlay to hide */ }
 
 // ─── HUD HELPERS ───────────────────────────────────────────────
 function updateHUD() {
@@ -765,12 +680,11 @@ function updateObstacles(dt) {
 
 function triggerChoosing() {
   state.choosing = true;
-  // Snap obstacles to a fixed comfortable distance
   obstacleMeshes.forEach((m, i) => {
     obstacleData[i].mesh.position.z = PAUSE_TRIGGER_Z;
   });
   playIdle();
-  showChooseUI();
+  // No overlay — player just uses arrow keys / swipe to pick a lane
 }
 
 // ─── ANSWER HANDLING ───────────────────────────────────────────
