@@ -245,7 +245,7 @@
 <!-- ── Main game module ─────────────────────────────────────── -->
 <script type="module">
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ─── CONFIG ────────────────────────────────────────────────────
 const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwy_yWVkYL6qN_QAokIUMNClWqI96wdiF3qasWVLihOMi9ecH12BSzG6ypSZI1A54VA/exec';
@@ -254,6 +254,7 @@ const LIVES      = 3;
 const SPAWN_Z    = 50;
 const LANES      = [-2.5, 0, 2.5];
 
+  const MODEL_URL = 'https://threejs.org/examples/models/gltf/Soldier.glb';
 // ─── LOADING UI ────────────────────────────────────────────────
 function setBar(pct, msg) {
   document.getElementById('ld-bar').style.width = pct + '%';
@@ -406,50 +407,45 @@ charGroup.position.set(0, 0, 0);
 scene.add(charGroup);
 
 function loadScene() {
+
   return new Promise((resolve, reject) => {
-    const fbxLoader = new FBXLoader();
 
-    // Step 1 — load idle.fbx (base mesh + skeleton + idle anim)
-    fbxLoader.load(
-      'models/idle.fbx',
-      (idleFbx) => {
-        idleFbx.scale.set(0.022, 0.022, 0.022);
-        idleFbx.rotation.y = Math.PI;   // face forward (+Z)
-        idleFbx.traverse(child => {
-          if (child.isMesh) {
-            child.castShadow    = true;
-            child.receiveShadow = true;
-          }
-        });
-        charGroup.add(idleFbx);
+    const loader = new GLTFLoader();
 
-        mixer     = new THREE.AnimationMixer(idleFbx);
-        idleAction = mixer.clipAction(idleFbx.animations[0]);
-        idleAction.play();                 // start in idle
+    loader.load(MODEL_URL, (gltf) => {
 
-        setBar(92, 'Loading running animation…');
+      const model = gltf.scene;
 
-        // Step 2 — load running.fbx (animation clip only)
-        fbxLoader.load(
-          'models/running.fbx',
-          (runFbx) => {
-            // Retarget the clip onto the already-loaded skeleton
-            runAction = mixer.clipAction(runFbx.animations[0]);
-            runAction.enabled = false;     // don't play yet
-            resolve();
-          },
-          undefined,
-          (err) => {
-            // running.fbx failed — we can still play with idle only
-            console.warn('running.fbx load failed:', err);
-            resolve();
-          }
-        );
-      },
-      undefined,
-      (err) => reject(new Error('idle.fbx failed: ' + err.message))
-    );
+      model.scale.set(1.0, 1.0, 1.0);  // Soldier.glb is already unit-scale
+
+      model.rotation.y = Math.PI;       // face forward
+
+      model.traverse(child => {
+
+        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+
+      });
+
+      charGroup.add(model);
+
+      mixer = new THREE.AnimationMixer(model);
+
+      // Soldier.glb clips: 0=Idle, 1=Run, 2=TPose, 3=Walk
+
+      idleAction = mixer.clipAction(gltf.animations[0]); // Idle
+
+      runAction  = mixer.clipAction(gltf.animations[1]); // Run
+
+      runAction.enabled = false;
+
+      idleAction.play();
+
+      resolve();
+
+    }, undefined, (err) => reject(new Error('GLB load failed: ' + err.message)));
+
   });
+
 }
 
 // Smooth crossfade between idle ↔ run
