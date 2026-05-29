@@ -305,8 +305,8 @@ async function fetchQuestions() {
     if (json.status !== 'ok' || !json.data || json.data.length === 0)
       throw new Error('No questions returned — check the "subway" tab in your sheet.');
     quizData = json.data;
-    setBar(85, 'Loading 3D assets…');
-    await loadScene();
+    setBar(85, 'Loading 3D assets & city…');
+    await Promise.all([loadScene(), loadCity()]);
     setBar(100, '✓ Ready!');
     await new Promise(r => setTimeout(r, 400));
     document.getElementById('loading-screen').style.display = 'none';
@@ -321,8 +321,8 @@ window._retryFetch = fetchQuestions;
 
 // ─── SCENE ─────────────────────────────────────────────────────
 const scene    = new THREE.Scene();
-scene.background = new THREE.Color(0xe8f4f0);
-scene.fog      = new THREE.FogExp2(0xc8e6d8, 0.018);
+scene.background = new THREE.Color(0x87ceeb); // sky blue
+scene.fog        = new THREE.FogExp2(0xb0d0e8, 0.012);
 
 const camera   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
 camera.position.set(0, 2.8, -4);
@@ -331,7 +331,7 @@ camera.lookAt(0, 1.2, 6);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0xe8f4f0);
+renderer.setClearColor(0x87ceeb);
 renderer.shadowMap.enabled = true;
 renderer.domElement.style.cssText = 'position:fixed;inset:0;z-index:1;';
 document.body.appendChild(renderer.domElement);
@@ -384,10 +384,47 @@ scene.add(trackMesh);
   scene.add(wall);
 });
 
-const grid = new THREE.GridHelper(120, 60, 0x22a032, 0x8fbfa0);
-grid.position.y = 0;
-scene.add(grid);
+// ─── CITY BACKGROUND (LittlestTokyo) ──────────────────────────
+const CITY_URL = 'https://threejs.org/examples/models/gltf/LittlestTokyo.glb';
+let cityMixer  = null;
 
+function loadCity() {
+  return new Promise((resolve) => {
+    const loader = new GLTFLoader();
+    loader.load(CITY_URL, (gltf) => {
+      const city = gltf.scene;
+
+      // Scale and position: large, centred, pushed back so it wraps around track
+      city.scale.set(0.012, 0.012, 0.012);
+      city.position.set(0, -0.5, 30);
+      city.rotation.y = Math.PI; // face forward
+
+      // Make every mesh receive/cast shadows but don't interfere with gameplay
+      city.traverse(child => {
+        if (child.isMesh) {
+          child.receiveShadow = true;
+          child.castShadow    = false; // keep perf reasonable
+        }
+      });
+
+      scene.add(city);
+
+      // Play the built-in city animation (lights, trams, people)
+      if (gltf.animations.length > 0) {
+        cityMixer = new THREE.AnimationMixer(city);
+        gltf.animations.forEach(clip => cityMixer.clipAction(clip).play());
+      }
+
+      resolve();
+    }, undefined, () => {
+      // City failed to load — not a blocker, game still works
+      console.warn('City model failed to load, continuing without it.');
+      resolve();
+    });
+  });
+}
+
+// Scrolling floor tiles with ABAP words (keep the track surface)
 const FLOOR_WORDS = ['DATA','TYPE','LOOP','SELECT','IF','FORM','CALL','READ','SORT','MOVE','WRITE','CLASS','METHOD','CLEAR','BDEF','CDS'];
 const TILE_W = 9.4, TILE_D = 8, TILE_COUNT = 16;
 const floorTiles = [];
@@ -818,8 +855,9 @@ function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), 0.05);
 
-  // Always render and animate the character
+  // Always render and animate the character + city
   if (mixer) mixer.update(dt);
+  if (cityMixer) cityMixer.update(dt);
 
   if (!state.gameOver && state.running && !state.paused) {
     // Smooth lane switch (always active so player can see character move while choosing)
@@ -834,9 +872,6 @@ function loop() {
         tile.position.z -= state.speed * dt;
         if (tile.position.z < -TILE_D * 2) tile.position.z += TOTAL;
       });
-
-      grid.position.z -= state.speed * dt;
-      if (grid.position.z < -10) grid.position.z = 0;
 
       updateObstacles(dt);
     }
