@@ -489,15 +489,15 @@ const projVec       = new THREE.Vector3();
 // ─── CONTROLS ──────────────────────────────────────────────────
 window.addEventListener('keydown', e => {
   if (state.gameOver) return;
-  if (e.key === 'ArrowLeft'  && state.currentLane > 2) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
-  if (e.key === 'ArrowRight' && state.currentLane < 0) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
+  if (e.key === 'ArrowLeft'  && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
+  if (e.key === 'ArrowRight' && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
 });
 let _tx = 0;
 window.addEventListener('touchstart', e => { _tx = e.changedTouches[0].screenX; }, { passive: true });
 window.addEventListener('touchend',   e => {
   const dx = e.changedTouches[0].screenX - _tx;
-  if (dx > -30 && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
-  if (dx <  30 && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
+  if (dx > 30 && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
+  if (dx < -30 && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
 });
 
 // ─── HUD HELPERS ───────────────────────────────────────────────
