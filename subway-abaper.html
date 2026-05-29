@@ -272,7 +272,7 @@ const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwy_yWVkYL6qN_QAokIU
 const API_SECRET = 'SZC-INTERNAL-2025-XK9';
 const LIVES      = 3;
 const SPAWN_Z    = 35;
-const LANES      = [-2.5, 0, 2.5];
+const LANES      = [2.5, 0, -2.5]; // index 0=left, 1=centre, 2=right on screen
 const MODEL_URL  = 'https://threejs.org/examples/models/gltf/Soldier.glb';
 
 // ─── LOADING UI ────────────────────────────────────────────────
@@ -416,6 +416,7 @@ for (let i = 0; i < TILE_COUNT; i++) {
 let mixer      = null;
 let idleAction = null;
 let runAction  = null;
+let walkAction = null;
 let charGroup  = new THREE.Group();
 charGroup.position.set(0, 0, 2);
 scene.add(charGroup);
@@ -432,9 +433,12 @@ function loadScene() {
       });
       charGroup.add(model);
       mixer = new THREE.AnimationMixer(model);
-      idleAction = mixer.clipAction(gltf.animations[0]);
-      runAction  = mixer.clipAction(gltf.animations[1]);
-      runAction.enabled = false;
+      // Soldier.glb: 0=Idle, 1=Run, 2=TPose, 3=Walk
+      idleAction = mixer.clipAction(gltf.animations[0]); // Idle
+      runAction  = mixer.clipAction(gltf.animations[1]); // Run
+      walkAction = mixer.clipAction(gltf.animations[3]); // Walk — used while choosing
+      runAction.enabled  = false;
+      walkAction.enabled = false;
       idleAction.play();
       resolve();
     }, undefined, (err) => reject(new Error('GLB load failed: ' + err.message)));
@@ -443,14 +447,20 @@ function loadScene() {
 
 function playIdle() {
   if (!mixer || !idleAction) return;
-  if (runAction && runAction.isRunning()) runAction.crossFadeTo(idleAction, 0.3, true);
+  [runAction, walkAction].forEach(a => { if (a?.isRunning()) a.crossFadeTo(idleAction, 0.25, true); });
   idleAction.play();
 }
 function playRun() {
   if (!mixer || !runAction) return;
-  if (idleAction && idleAction.isRunning()) idleAction.crossFadeTo(runAction, 0.3, true);
+  [idleAction, walkAction].forEach(a => { if (a?.isRunning()) a.crossFadeTo(runAction, 0.25, true); });
   runAction.enabled = true;
   runAction.play();
+}
+function playWalk() {
+  if (!mixer || !walkAction) return;
+  [idleAction, runAction].forEach(a => { if (a?.isRunning()) a.crossFadeTo(walkAction, 0.25, true); });
+  walkAction.enabled = true;
+  walkAction.play();
 }
 
 // ─── GAME STATE ────────────────────────────────────────────────
@@ -482,9 +492,9 @@ function setPaused(val) {
   if (val) {
     playIdle();
   } else {
-    // Only resume running animation if we're mid-run (not choosing)
-    if (!state.choosing) playRun();
-    clock.getDelta(); // flush dt so we don't get a huge jump
+    if (state.choosing) playWalk();
+    else playRun();
+    clock.getDelta();
   }
 }
 
@@ -506,18 +516,26 @@ window.addEventListener('keydown', e => {
 
 // ─── LANE SELECTION ────────────────────────────────────────────
 // Arrow keys: Left = move left (lane--), Right = move right (lane++)
+// Up / Down = confirm current lane (stay in same lane)
 window.addEventListener('keydown', e => {
   if (state.gameOver || state.paused || !state.choosing) return;
 
   if (e.key === 'ArrowLeft' && state.currentLane > 0) {
     state.currentLane--;
     state.targetX = LANES[state.currentLane];
+    playWalk();
     scheduleConfirm();
   }
   if (e.key === 'ArrowRight' && state.currentLane < 2) {
     state.currentLane++;
     state.targetX = LANES[state.currentLane];
+    playWalk();
     scheduleConfirm();
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(_confirmTimer);
+    confirmLane();
   }
 });
 
@@ -683,8 +701,7 @@ function triggerChoosing() {
   obstacleMeshes.forEach((m, i) => {
     obstacleData[i].mesh.position.z = PAUSE_TRIGGER_Z;
   });
-  playIdle();
-  // No overlay — player just uses arrow keys / swipe to pick a lane
+  playWalk(); // walk-in-place looks much better than idle while waiting for input
 }
 
 // ─── ANSWER HANDLING ───────────────────────────────────────────
