@@ -302,7 +302,8 @@ window._retryFetch = fetchQuestions;
 
 // ─── SCENE ─────────────────────────────────────────────────────
 const scene    = new THREE.Scene();
-scene.fog      = new THREE.FogExp2(0x0d1117, 0.026);
+scene.background = new THREE.Color(0xe8f4f0);
+scene.fog      = new THREE.FogExp2(0xc8e6d8, 0.018);
 
 const camera   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
 camera.position.set(0, 3.5, -6);
@@ -311,7 +312,7 @@ camera.lookAt(0, 1.5, 8);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x0d1117);
+renderer.setClearColor(0xe8f4f0);
 renderer.shadowMap.enabled = true;
 renderer.domElement.style.cssText = 'position:fixed;inset:0;z-index:1;';
 document.body.appendChild(renderer.domElement);
@@ -323,11 +324,11 @@ window.addEventListener('resize', () => {
 });
 
 // ─── LIGHTS ────────────────────────────────────────────────────
-const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x88aa88, 2.0);
 hemi.position.set(0, 20, 0);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+const sun = new THREE.DirectionalLight(0xffffff, 2.5);
 sun.position.set(3, 14, -8);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
@@ -340,7 +341,7 @@ scene.add(rim);
 
 // ─── TRACK ─────────────────────────────────────────────────────
 // Main track surface
-const trackMat  = new THREE.MeshLambertMaterial({ color: 0x161b22 });
+const trackMat  = new THREE.MeshLambertMaterial({ color: 0xb0c4b8 });
 const trackMesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 600), trackMat);
 trackMesh.rotation.x = -Math.PI / 2;
 trackMesh.position.set(0, 0, 280);
@@ -369,7 +370,7 @@ scene.add(trackMesh);
 });
 
 // Background grid (off-track)
-const grid = new THREE.GridHelper(120, 60, 0x22a032, 0x1a2a1e);
+const grid = new THREE.GridHelper(120, 60, 0x22a032, 0x8fbfa0);
 grid.position.y = 0;
 scene.add(grid);
 
@@ -381,9 +382,9 @@ for (let i = 0; i < TILE_COUNT; i++) {
   const canvas = document.createElement('canvas');
   canvas.width  = 256; canvas.height = 64;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#0d1117';
-  ctx.fillRect(0, 0, 256, 64);
-  ctx.fillStyle = 'rgba(34,160,50,0.18)';
+ctx.fillStyle = '#b0c4b8';
+ctx.fillRect(0, 0, 256, 64);
+ctx.fillStyle = 'rgba(20,100,40,0.35)';
   ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(FLOOR_WORDS[i % FLOOR_WORDS.length], 128, 42);
@@ -418,7 +419,7 @@ function loadScene() {
 
       model.scale.set(1.0, 1.0, 1.0);  // Soldier.glb is already unit-scale
 
-      model.rotation.y = 0;      // face forward
+      model.rotation.y = Math.PI;      // face forward
 
       model.traverse(child => {
 
@@ -495,8 +496,8 @@ let _tx = 0;
 window.addEventListener('touchstart', e => { _tx = e.changedTouches[0].screenX; }, { passive: true });
 window.addEventListener('touchend',   e => {
   const dx = e.changedTouches[0].screenX - _tx;
-  if (dx < -30 && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
-  if (dx >  30 && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
+  if (dx >  30 && state.currentLane > 0) { state.currentLane--; state.targetX = LANES[state.currentLane]; }
+  if (dx < -30 && state.currentLane < 2) { state.currentLane++; state.targetX = LANES[state.currentLane]; }
 });
 
 // ─── HUD HELPERS ───────────────────────────────────────────────
@@ -589,7 +590,7 @@ function spawnNextQuestion() {
     const textMat = new THREE.MeshLambertMaterial({ map: tex });
 
     // BoxGeometry face order: +X, -X, +Y, -Y, +Z(front), -Z(back)
-    const materials = [solidMat, solidMat, solidMat, solidMat, textMat, solidMat];
+    const materials = [solidMat, solidMat, solidMat, solidMat, solidMat, textMat];
 
     const geo = new THREE.BoxGeometry(2.2, 1.6, 0.5);
     const box = new THREE.Mesh(geo, materials);
